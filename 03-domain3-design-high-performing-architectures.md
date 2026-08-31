@@ -407,3 +407,214 @@
 ---
 
 *Content aligned to AWS SAA-C03 Exam Content Overview — Domain 3: Design High-Performing Architectures. Verify limits/pricing on official AWS docs before exam day.*
+
+---
+
+## EC2 Instance Family Decision Guide
+
+| Family | Code | Optimized for | Use case | Exam trigger |
+|---|---|---|---|---|
+| **General Purpose** | t3/t4g, m5/m6g | Balanced CPU/memory | Web servers, dev, small DBs | "General workload" |
+| **Compute Optimized** | c5/c6g/c7g | High CPU | Batch, gaming, HPC, ML inference | "CPU-intensive" |
+| **Memory Optimized** | r5/r6g/x2gd | High RAM | In-memory DBs, caching, real-time analytics | "Large dataset in memory" |
+| **Storage Optimized** | i3/i4g, d2/d3 | High IOPS/disk | NoSQL DBs, data warehousing, log processing | "High random I/O" |
+| **Accelerated Computing** | p4/p5, g4/g5, inf2 | GPU/FPGA/inference chips | ML training, graphics, genomics | "GPU" or "ML training" |
+| **HPC Optimized** | hpc6a/hpc7g | High network throughput | Tightly coupled HPC, CFD | "HPC cluster" |
+
+### Burstable (T instances)
+- **Baseline CPU** + **CPU credits** accumulated when below baseline.
+- **Unlimited mode:** can burst above baseline (charged if sustained).
+- **Exam:** dev/test, low-average CPU workloads → T3/T4g (cheapest general purpose).
+
+### Graviton (ARM-based)
+- **t4g, m6g, c6g, r6g** — up to 40% better price-performance vs x86.
+- **Exam:** "most cost-effective" + no x86 requirement → Graviton.
+
+---
+
+## DynamoDB Deep Dive
+
+### Partition key design
+- Partition key determines **which physical partition** stores the item.
+- **Hot partition** = uneven key distribution → throttling on one partition.
+- **Fix:** add high-cardinality sort key, write sharding (append random suffix), or use write sharding pattern.
+
+### GSI vs LSI
+| | **GSI (Global Secondary Index)** | **LSI (Local Secondary Index)** |
+|---|---|---|
+| Key schema | Different partition + sort key | Same partition key, different sort key |
+| When created | Anytime | Only at table creation |
+| Capacity | Independent WCU/RCU | Shares table's provisioned capacity |
+| Consistency | Eventually consistent only | Strongly or eventually consistent |
+| **Exam pick** | "Query on different attribute" | Rare; legacy — prefer GSI |
+
+### WCU/RCU calculation
+- **1 WCU** = 1 write/sec for item ≤ 1 KB (round up).
+- **1 RCU** = 1 strongly consistent read/sec for item ≤ 4 KB (or 2 eventually consistent).
+- Example: 100 writes/sec of 3 KB items = 100 × 3 = **300 WCU**.
+
+### On-Demand vs Provisioned
+| | **On-Demand** | **Provisioned** |
+|---|---|---|
+| Capacity planning | None (auto-scales) | You set WCU/RCU |
+| Cost at steady load | Higher per-request | Lower with reserved capacity |
+| Throttling | Absorbs bursts (with limits) | Hard throttle at provisioned limit |
+| **Exam pick** | "Unpredictable/spiky traffic" | "Steady, known throughput" |
+
+### DAX (DynamoDB Accelerator)
+- In-memory cache **in front of** DynamoDB; microsecond read latency.
+- **Write-through cache** — writes go to DAX and DynamoDB.
+- **Exam:** "read-heavy, microsecond latency, same DynamoDB API" → DAX.
+
+### DynamoDB Streams + Lambda
+- Stream captures item-level changes (INSERT, MODIFY, REMOVE).
+- **Lambda trigger** on stream → event-driven processing (sync to Elasticsearch, send notifications).
+- **Exam:** "react to DynamoDB changes in real-time" → Streams + Lambda.
+
+---
+
+## S3 Performance Deep Dive
+
+| Technique | What | When |
+|---|---|---|
+| **Multipart upload** | Parallel upload of parts ≥ 100 MB | Large files (>100 MB); faster upload |
+| **Transfer Acceleration** | Upload via CloudFront edge → S3 | Remote users uploading to S3 |
+| **Byte-range fetches** | Parallel download of object ranges | Large object download by multiple clients |
+| **Prefix sharding** | `uploads/{random-prefix}/file` | >3,500 PUT/s or >5,500 GET/s per prefix |
+| **S3 Select** | SQL-like queries on objects (CSV/JSON) | Filter data before downloading entire object |
+| **Athena** | SQL on S3 data lake | Ad-hoc analytics across many objects |
+
+**Transfer Acceleration vs CloudFront:**
+- **Transfer Acceleration** = faster **upload** to S3 (uses edge locations).
+- **CloudFront** = faster **download** from S3 (caches at edge).
+
+---
+
+## Database Comparison Master Table
+
+| Need | Service | Why |
+|---|---|---|
+| Relational, managed, multi-engine | **RDS** | MySQL, PostgreSQL, MariaDB, Oracle, SQL Server |
+| AWS-native relational, best HA/performance | **Aurora** | 6-way replication, auto storage, serverless option |
+| Key-value/document, single-digit ms, serverless | **DynamoDB** | NoSQL, auto-scaling, global tables |
+| Data warehouse / analytics | **Redshift** | Columnar, MPP, petabyte scale |
+| MongoDB-compatible | **DocumentDB** | Managed MongoDB API |
+| Graph relationships (social, fraud) | **Neptune** | Gremlin/SPARQL graph queries |
+| In-memory cache | **ElastiCache** | Redis (complex) or Memcached (simple) |
+| Time-series IoT data | **Timestream** | Serverless time-series with lifecycle |
+
+---
+
+## Kinesis & Analytics Pipeline
+
+| Service | Model | Exam trigger |
+|---|---|---|
+| **Kinesis Data Streams** | Real-time, custom consumers, ordered shards | "Real-time processing with custom code" |
+| **Kinesis Data Firehose** | Load streaming data to S3/Redshift/OpenSearch | "Near-real-time delivery to data store" |
+| **Kinesis Data Analytics** | SQL on streams (→ Flink) | "SQL queries on streaming data" |
+| **Glue** | Serverless ETL + Data Catalog | "Discover schema, transform data" |
+| **Athena** | Serverless SQL on S3 | "Ad-hoc queries on data lake" |
+| **EMR** | Managed Hadoop/Spark | "Big data processing, custom Spark jobs" |
+
+**Decision tree:**
+```
+Need real-time custom processing? → Kinesis Data Streams
+Need to load stream to S3/Redshift? → Kinesis Firehose
+Need ad-hoc SQL on S3 files? → Athena
+Need heavy ETL/transform? → Glue (or EMR for Spark)
+Need data warehouse? → Redshift
+```
+
+---
+
+## CloudFront vs Global Accelerator
+
+| | **CloudFront** | **Global Accelerator** |
+|---|---|---|
+| Layer | L7 (HTTP/HTTPS) | L4 (TCP/UDP) |
+| Caching | **Yes** (edge cache) | No caching |
+| Static IPs | No (uses edge locations) | **Yes** (2 anycast static IPs) |
+| Protocol | HTTP/HTTPS | TCP, UDP, TLS |
+| **Exam: static content** | **CloudFront** in front of S3/ALB | — |
+| **Exam: gaming/real-time TCP** | — | **Global Accelerator** |
+| **Exam: API with caching** | **CloudFront** with cache policies | — |
+| **Exam: non-HTTP protocol** | — | **Global Accelerator** |
+
+---
+
+## Domain 3 — Additional quick-fire Qs (Q41–Q60)
+
+- Q41: ML training needs GPU → **P4/P5 instances** (Accelerated Computing).
+- Q42: Read-heavy DynamoDB with microsecond latency → **DAX** cluster.
+- Q43: Query DynamoDB by email address (not partition key) → **GSI** on email attribute.
+- Q44: Upload 10 GB file to S3 from Tokyo → **S3 Transfer Acceleration**.
+- Q45: Serve static website globally with low latency → **S3 + CloudFront + Route 53**.
+- Q46: Real-time clickstream analytics with custom processing → **Kinesis Data Streams** + Lambda/ECS consumers.
+- Q47: Load streaming logs to S3 for later analysis → **Kinesis Data Firehose**.
+- Q48: Ad-hoc SQL on 500 GB of CSV in S3 → **Athena** (pay per query).
+- Q49: Daily ETL job transforming raw data → **Glue ETL job** + Glue Data Catalog.
+- Q50: Petabyte-scale data warehouse → **Redshift** (RA3 nodes with managed storage).
+- Q51: Social network friend connections → **Neptune** (graph database).
+- Q52: IoT sensor time-series data → **Timestream**.
+- Q53: MongoDB app migrating to AWS → **DocumentDB**.
+- Q54: HPC cluster needing low-latency networking → **Placement group: Cluster** + **Elastic Fabric Adapter (EFA)**.
+- Q55: 20 EC2 instances must be on different hardware → **Placement group: Spread** (max 7/AZ).
+- Q56: Large distributed database (Cassandra/Hadoop) → **Placement group: Partition**.
+- Q57: Most cost-effective general purpose instance → **Graviton (m6g/t4g)** if app supports ARM.
+- Q58: Cache session data with persistence → **ElastiCache Redis** (not Memcached).
+- Q59: Simple object cache, multi-threaded → **ElastiCache Memcached**.
+- Q60: Low-latency gaming for global TCP players → **Global Accelerator** (not CloudFront).
+
+---
+
+## Domain 3 — Exam Scenario Walkthroughs
+
+### Scenario 1: Read-heavy DynamoDB
+**Stem:** Shopping cart app; 100K reads/sec, 1K writes/sec; reads must be <1ms.
+**Answer:** DynamoDB provisioned/on-demand + **DAX** cluster for microsecond reads.
+**Traps:** ElastiCache (different API, requires code changes). Read replicas (DynamoDB doesn't have traditional replicas).
+
+### Scenario 2: Large file upload optimization
+**Stem:** Users worldwide upload 5 GB video files to S3; uploads are slow from Asia.
+**Answer:** Enable **S3 Transfer Acceleration** (edge upload) + **multipart upload** for parallel parts.
+**Traps:** CloudFront (for download, not upload). Bigger instances (upload is client-side).
+
+### Scenario 3: Data lake analytics
+**Stem:** 50 TB of log data in S3; analysts need ad-hoc SQL queries without managing infrastructure.
+**Answer:** **Athena** (serverless SQL on S3) + **Glue Data Catalog** for schema discovery.
+**Traps:** Redshift (persistent warehouse, overkill for ad-hoc). EMR (requires cluster management).
+
+### Scenario 4: Real-time analytics pipeline
+**Stem:** Website clickstream; process events in real-time; store results in S3 and Redshift.
+**Answer:** **Kinesis Data Streams** → Lambda (real-time) + **Kinesis Firehose** → S3 + Redshift.
+**Traps:** SQS (not real-time streaming). Batch processing (not real-time).
+
+### Scenario 5: Database selection
+**Stem:** New mobile app; millions of users; key-value access pattern; unpredictable traffic; serverless preferred.
+**Answer:** **DynamoDB on-demand** capacity mode.
+**Traps:** RDS (relational, requires capacity planning). Aurora Serverless (relational, not key-value).
+
+### Scenario 6: Global static content
+**Stem:** Marketing website with images/videos; users worldwide; minimize latency and origin load.
+**Answer:** S3 origin + **CloudFront** distribution + Route 53 alias + ACM cert.
+**Traps:** S3 website hosting alone (no edge caching). Global Accelerator (no HTTP caching).
+
+### Scenario 7: HPC workload
+**Stem:** Genomics research; tightly coupled MPI jobs; needs lowest network latency between nodes.
+**Answer:** **Placement group: Cluster** + **Compute Optimized (c6g/c7g)** + **EFA** enabled.
+**Traps:** Spread placement (maximizes isolation, not latency). General purpose instances.
+
+### Scenario 8: Graph database
+**Stem:** Fraud detection; traverse relationships between accounts, transactions, and devices.
+**Answer:** **Amazon Neptune** with Gremlin or SPARQL queries.
+**Traps:** DynamoDB (no graph traversal). RDS (relational joins too slow at scale).
+
+### Scenario 9: Caching layer
+**Stem:** Web app queries RDS; 90% of queries are identical; reduce DB load.
+**Answer:** **ElastiCache Redis** in front of RDS; cache query results with TTL.
+**Traps:** DAX (only for DynamoDB). CloudFront (caches HTTP responses, not DB queries).
+
+### Scenario 10: EBS volume selection
+**Stem:** Production MySQL database; needs 20,000 IOPS; low latency; critical workload.
+**Answer:** **EBS io2 Block Express** volume (up to 256,000 IOPS).
+**Traps:** gp3 (max 16,000 IOPS). st1 (HDD, throughput not IOPS).

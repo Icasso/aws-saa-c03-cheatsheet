@@ -372,3 +372,279 @@ Misconfig → Config + Security Hub
 Vuln scan → Inspector
 PII leak risk → Macie
 ```
+
+---
+
+## IAM Policy Deep Dive (exam essentials)
+
+### JSON policy anatomy
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "AllowS3Read",
+    "Effect": "Allow",
+    "Principal": {"AWS": "arn:aws:iam::ACCOUNT:user/alice"},
+    "Action": ["s3:GetObject", "s3:ListBucket"],
+    "Resource": ["arn:aws:s3:::my-bucket", "arn:aws:s3:::my-bucket/*"],
+    "Condition": {
+      "StringEquals": {"aws:PrincipalOrgID": "o-abc123"},
+      "Bool": {"aws:SecureTransport": "true"}
+    }
+  }]
+}
+```
+
+| Field | Purpose | Exam note |
+|---|---|---|
+| **Effect** | Allow or Deny | Explicit Deny always wins |
+| **Principal** | Who (resource-based policies only) | `*` = anyone; use account ID for cross-account |
+| **Action** | API operations | Use wildcards carefully (`s3:*`) |
+| **Resource** | ARN of affected resources | Bucket vs object ARNs differ for S3 |
+| **Condition** | Optional constraints | `aws:SourceIp`, `aws:MultiFactorAuthPresent`, `s3:prefix` |
+
+### Cross-account S3 bucket policy example
+```json
+{
+  "Effect": "Allow",
+  "Principal": {"AWS": "arn:aws:iam::111122223333:root"},
+  "Action": "s3:GetObject",
+  "Resource": "arn:aws:s3:::shared-data/*"
+}
+```
+Consumer account users still need an **identity policy** allowing `s3:GetObject` on that bucket (unless bucket policy grants `*`).
+
+### SCP example — deny leaving organization
+```json
+{
+  "Effect": "Deny",
+  "Action": ["organizations:LeaveOrganization"],
+  "Resource": "*"
+}
+```
+SCPs **never grant** — they only filter what identity/resource policies can allow.
+
+### Trust policy for cross-account AssumeRole
+```json
+{
+  "Effect": "Allow",
+  "Principal": {"AWS": "arn:aws:iam::111122223333:root"},
+  "Action": "sts:AssumeRole",
+  "Condition": {"StringEquals": {"sts:ExternalId": "unique-external-id"}}
+}
+```
+**ExternalId** prevents confused deputy problem in cross-account access.
+
+### High-value condition keys
+| Condition key | Use case |
+|---|---|
+| `aws:MultiFactorAuthPresent` | Require MFA for sensitive actions |
+| `aws:SourceIp` | Restrict to corporate IP range |
+| `aws:PrincipalOrgID` | Only principals from your org |
+| `aws:SecureTransport` | Enforce HTTPS/TLS |
+| `aws:SourceArn` | Restrict who can invoke Lambda/SNS |
+| `s3:prefix` | Limit S3 listing to specific prefixes |
+| `kms:ViaService` | Key only usable via specific AWS service |
+| `ec2:Vpc` | Restrict API calls to specific VPC |
+
+---
+
+## Organizations & Multi-Account Security
+
+### Control Tower landing zone
+- **Account Factory** — automated new account provisioning with guardrails.
+- **Guardrails** — implemented as SCPs (mandatory) and Config rules (detective).
+- **Dashboard** — drift detection across org.
+
+### Centralized security account pattern
+```
+Management Account (Organizations root)
+├── Security OU
+│   ├── Log Archive Account (CloudTrail org trail, Config aggregator)
+│   └── Security Tooling Account (GuardDuty admin, Security Hub delegated admin)
+├── Workloads OU
+│   ├── Production accounts
+│   └── Development accounts (SCPs restrict prod services)
+```
+
+### Common SCP guardrails
+| SCP | Blocks |
+|---|---|
+| Deny unapproved regions | `ec2:*` in non-approved regions |
+| Deny root user actions | All actions when `aws:PrincipalArn` = root |
+| Require encryption | Deny `s3:PutObject` without `s3:x-amz-server-side-encryption` |
+| Deny disabling security | `cloudtrail:StopLogging`, `guardduty:DeleteDetector` |
+| Deny public S3 | `s3:PutBucketPublicAccessBlock` inverted logic |
+
+### AWS Firewall Manager
+- Centrally manage **WAF rules**, **Security Groups**, **Network Firewall policies**, **Shield Advanced** across accounts/regions.
+- Use when: multi-account org needs consistent firewall rules without per-account config.
+
+---
+
+## Advanced VPC Security Scenarios
+
+### 3-tier web app security checklist
+```
+Internet → [Route 53] → [ALB in public subnet, SG: 443 from 0.0.0.0/0]
+                              ↓ (SG: 443 from ALB-SG only)
+                         [App EC2 in private subnet + NAT GW]
+                              ↓ (SG: 3306 from App-SG only)
+                         [RDS in isolated subnet, no internet route]
+```
+- **WAF** on ALB for SQLi/XSS protection.
+- **ACM** cert on ALB listener (TLS termination).
+- **No SSH ports open** — use SSM Session Manager.
+- **VPC Flow Logs** to CloudWatch/S3 for traffic analysis.
+
+### Flow Logs vs CloudTrail vs GuardDuty
+| Tool | What it logs | Use for |
+|---|---|---|
+| **VPC Flow Logs** | IP/port/protocol/packets (no payload) | Network troubleshooting, anomaly detection |
+| **CloudTrail** | API calls (who/when/what) | Audit, compliance, forensics |
+| **GuardDuty** | ML analysis of Flow Logs + CloudTrail + DNS | Threat detection (compromised instances) |
+
+### SSM Session Manager vs Bastion Host
+| | **SSM Session Manager** | **Bastion Host** |
+|---|---|---|
+| Inbound port | None (outbound HTTPS to SSM) | SSH 22 / RDP 3389 open to internet |
+| Auth | IAM policies | SSH keys / passwords |
+| Audit | Session logs in S3/CloudWatch | Manual logging |
+| Cost | Free (SSM API calls) | EC2 instance hourly |
+| **Exam answer** | **Preferred** | Legacy distractor |
+
+---
+
+## Encryption Decision Matrix
+
+| Requirement | Solution |
+|---|---|
+| Default S3 encryption, no audit needed | **SSE-S3** |
+| Audit key usage, granular IAM, cross-account | **SSE-KMS** (customer managed CMK) |
+| Customer provides key per request | **SSE-C** |
+| Maximum control, encrypt before upload | **Client-side encryption** |
+| FIPS 140-2 Level 3, dedicated hardware | **CloudHSM** |
+| Reduce KMS API costs on high-volume S3 | **S3 Bucket Key** (one KMS request per bucket per object) |
+
+### RDS/Aurora encryption
+- Enable at **creation** — cannot enable encryption on existing unencrypted RDS (must snapshot → copy encrypted → restore).
+- **In-transit:** force SSL via parameter group (`rds.force_ssl = 1`).
+- **Aurora:** storage always encrypted; encryption at rest uses KMS.
+
+### EBS encryption
+- Encrypt by default at account level (recommended).
+- Encrypted snapshots → encrypted volumes; can share encrypted snapshots cross-account with KMS key policy.
+
+---
+
+## Cognito Deep Dive
+
+### User Pool vs Identity Pool flow
+```
+User Pool flow (authentication):
+User → sign up/sign in → User Pool → JWT tokens (ID, access, refresh)
+
+Identity Pool flow (AWS credentials):
+JWT from User Pool (or Google/Facebook/SAML)
+  → Identity Pool → STS temporary AWS credentials → access S3/DynamoDB/etc.
+```
+
+| Component | Purpose | Exam trigger |
+|---|---|---|
+| **User Pool** | User directory, sign-up/in, MFA, hosted UI | "Authenticate mobile app users" |
+| **Identity Pool** | Exchange identity for **temporary AWS creds** | "Users upload directly to S3" |
+| **User Pool + Identity Pool** | Full auth + AWS resource access | Most common mobile/web pattern |
+
+### Federated identity providers
+- **Social:** Google, Facebook, Apple, Amazon (via User Pool).
+- **Enterprise:** SAML 2.0 (Okta, Azure AD), OIDC.
+- **Fine-grained access:** map User Pool groups → different IAM roles in Identity Pool.
+
+---
+
+## Domain 1 — Additional quick-fire Qs (Q41–Q60)
+
+- Q41: Prevent IAM users from disabling MFA → **IAM policy Deny** on `iam:DeactivateMFADevice` without MFA present condition.
+- Q42: Audit all KMS key usage across accounts → **CloudTrail** with KMS data events + centralized log account.
+- Q43: Block all traffic from a specific country → **WAF geo match rule** on CloudFront or ALB.
+- Q44: Ensure no security group allows 0.0.0.0/0 on port 22 → **AWS Config rule** + Security Hub.
+- Q45: Centralized WAF rules across 20 accounts → **Firewall Manager**.
+- Q46: Developer needs SSH to private EC2 without opening port 22 → **SSM Session Manager**.
+- Q47: S3 bucket policy allows public read but BPA is on → **BPA wins** — bucket stays private.
+- Q48: Cross-account KMS encrypt: Account A encrypts with Account B's key → **Key policy in B** must allow Account A principal.
+- Q49: Lambda needs VPC access to RDS in private subnet → Lambda in **same VPC private subnets** + **security group** allowing RDS port.
+- Q50: Compliance requires keys never leave FIPS-validated hardware → **CloudHSM** (not standard KMS).
+- Q51: Detect if someone enables public access on S3 bucket → **Macie** or **Config rule** + **Security Hub**.
+- Q52: Web app needs OAuth login with Google → **Cognito User Pool** with Google identity provider.
+- Q53: Mobile app users need direct S3 upload with temp creds → **Cognito Identity Pool** + IAM role with S3 PutObject.
+- Q54: Prevent any account from creating resources outside us-east-1 → **SCP** Deny all actions where `aws:RequestedRegion` ≠ us-east-1.
+- Q55: API calls must only come from corporate IP range → **IAM condition** `aws:SourceIp` or **VPC endpoint policy**.
+- Q56: Encrypt EBS volumes automatically for all new instances → **EBS encryption by default** at account level.
+- Q57: RDS credentials in code → **Wrong.** Use **Secrets Manager** + rotation + IAM auth where supported.
+- Q58: Need TLS cert for custom domain on CloudFront → **ACM cert in us-east-1** (CloudFront requirement).
+- Q59: Detect compromised IAM credentials calling unusual APIs → **GuardDuty**.
+- Q60: Prove encryption is enabled on all RDS instances → **AWS Config** rule `rds-storage-encrypted`.
+
+---
+
+## Domain 1 — Exam Scenario Walkthroughs
+
+### Scenario 1: Cross-account S3 access
+**Stem:** Account A owns S3 bucket. Account B's Lambda needs read access. Least privilege, no long-term keys.
+**Analysis:** Cross-account = resource-based policy on bucket + IAM role in Account B.
+**Answer:** Bucket policy in A granting B's role `s3:GetObject` + IAM role in B with trust + `s3:GetObject` on bucket ARN.
+**Traps:** IAM user with access keys (wrong — use role). Making bucket public (wrong — least privilege).
+
+### Scenario 2: Private subnet Lambda needs AWS APIs
+**Stem:** Lambda in VPC private subnet must call DynamoDB and Secrets Manager without internet.
+**Analysis:** Private subnet = no IGW. DynamoDB = gateway endpoint. Secrets Manager = interface endpoint.
+**Answer:** Gateway VPC endpoint for DynamoDB + Interface VPC endpoint for Secrets Manager.
+**Traps:** NAT Gateway (works but costs money + data traverses internet path for some APIs). Public subnet (wrong — security).
+
+### Scenario 3: Regulatory WORM storage
+**Stem:** Financial records in S3 must be immutable for 7 years; even admins cannot delete.
+**Analysis:** WORM = Write Once Read Many. S3 Object Lock compliance mode.
+**Answer:** Enable S3 Object Lock on bucket (at creation) + compliance mode retention for 7 years.
+**Traps:** Versioning alone (admins can delete versions). Glacier (retrieval, not immutability guarantee).
+
+### Scenario 4: Enterprise SSO to 50 AWS accounts
+**Stem:** 500 employees need SSO access to 50 AWS accounts with different permission levels per team.
+**Analysis:** Multi-account SSO = IAM Identity Center, not per-account IAM users.
+**Answer:** IAM Identity Center connected to corporate IdP + permission sets per team + account assignments.
+**Traps:** SAML federation to single account (doesn't scale). IAM users in each account (operational nightmare).
+
+### Scenario 5: Detect and block SQL injection
+**Stem:** Public REST API behind ALB; block SQL injection and rate-limit abusive IPs.
+**Analysis:** L7 web attack = WAF. Rate limiting = WAF rate-based rule.
+**Answer:** AWS WAF web ACL on ALB with SQLi managed rule group + rate-based rule.
+**Traps:** Security Group (L4, can't inspect HTTP). NACL (stateless, no L7). Shield (DDoS, not SQLi).
+
+### Scenario 6: Encrypt with full key audit trail
+**Stem:** Healthcare app stores PHI in S3; must encrypt at rest with auditable key usage and ability to disable keys.
+**Analysis:** Audit = KMS CloudTrail integration. Customer control = customer managed CMK.
+**Answer:** SSE-KMS with customer managed CMK + key policy restricting access + CloudTrail logging.
+**Traps:** SSE-S3 (no per-key audit). SSE-C (customer manages keys but no KMS audit).
+
+### Scenario 7: Secure hybrid connectivity
+**Stem:** On-premises datacenter needs 10 Gbps private connection to AWS with encrypted backup link.
+**Analysis:** Primary = Direct Connect. Backup = Site-to-Site VPN.
+**Answer:** DX connection as primary + VPN over internet as backup (DX + VPN).
+**Traps:** VPN only (insufficient bandwidth). VPC Peering (doesn't connect on-prem).
+
+### Scenario 8: Centralized threat detection
+**Stem:** Security team wants automated threat detection across all accounts without deploying agents.
+**Analysis:** Agentless = GuardDuty (analyzes CloudTrail, Flow Logs, DNS logs).
+**Answer:** Enable GuardDuty in all regions + delegate admin to security account + Security Hub aggregation.
+**Traps:** Inspector (vulnerability scanning, not threat detection). Config (compliance, not threats).
+
+### Scenario 9: Prevent public S3 exposure
+**Stem:** Company had data breach from public S3 bucket. Prevent recurrence account-wide.
+**Analysis:** Defense in depth: BPA + Config rules + Macie + SCP.
+**Answer:** Enable S3 Block Public Access at **account level** + Config rule detecting public buckets + SCP denying `s3:PutBucketPublicAccessBlock` removal.
+**Traps:** Bucket policy only (admin can override). Macie alone (detective, not preventive).
+
+### Scenario 10: Temporary elevated access
+**Stem:** Developer needs admin access for 2 hours to debug production issue. Audit trail required.
+**Analysis:** Temporary + auditable = STS AssumeRole with time-limited session.
+**Answer:** IAM role with elevated permissions + `sts:AssumeRole` with `aws:userid` condition + CloudTrail logging + optional approval workflow (IAM Identity Center).
+**Traps:** Sharing root credentials (never). Creating permanent IAM user with admin (violates least privilege).

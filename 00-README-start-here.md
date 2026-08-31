@@ -52,10 +52,11 @@ Spend most of your time on **1 & 2** — they are 56% of the exam.
 1. Read `05-aws-services-map-memorize.md` end to end (fast, high recall value).
 2. Skim `06-well-architected-framework.md` for pillar vocabulary.
 3. Read this file's "top 10."
-4. **Do `07-practice-exam.md` (40 Qs) timed-ish. Don't peek.**
+4. **Do `07-practice-exam.md` (65 Qs) timed — 130 min. Don't peek.**
 5. Read the answer key / explanations immediately; for every miss, find that term in the domain files.
 6. Skim the 4 domain files only for whatever you got wrong.
-7. `08-flashcards-key-terms.md` + `09-test-day-tactics.md` on the way to bed / morning.
+7. `10-exam-scenario-playbook.md` — memorize the 50 patterns.
+8. `08-flashcards-key-terms.md` + `09-test-day-tactics.md` on the way to bed / morning.
 
 ## Files in this kit
 - `00-README-start-here.md` — this file
@@ -70,3 +71,6 @@ Spend most of your time on **1 & 2** — they are 56% of the exam.
 - `09-test-day-tactics.md` — how to handle each question type + final tips
 
 *Content aligned to AWS SAA-C03 Exam Content Overview (docs.aws.amazon.com/aws-certification/latest/solutions-architect-associate-03). Verify any number/price against the official page before you sit the exam.*
+
+- `10-exam-scenario-playbook.md` — 50 exam patterns + trap answers
+- `11-architecture-patterns-reference.md` — 10 reference architectures with diagrams

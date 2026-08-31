@@ -84,3 +84,70 @@
 - "Improve reliability **and** reduce cost" → auto scaling (scale in when idle) + right-sizing.
 - "Sustainability" on the exam → right-size, Graviton, managed services, delete unused resources.
 - Every answer should map to at least one pillar — if two options both work, pick the one that best matches the **stated priority** in the question stem.
+
+---
+
+## Per-Pillar Review Questions (can you answer these?)
+
+### Operational Excellence
+1. How do you automate infrastructure changes? → **CloudFormation/CDK/IaC**
+2. How do you monitor application health? → **CloudWatch alarms, dashboards, X-Ray**
+3. How do you run operations as code? → **SSM Automation, Lambda, Step Functions**
+4. How do you learn from failures? → **Postmortems, blameless culture, runbooks**
+5. How do you make frequent, small changes? → **CI/CD (CodePipeline), blue/green deploys**
+
+### Security
+1. How do you enforce least privilege? → **IAM roles, permission boundaries, SCPs**
+2. How do you encrypt data? → **KMS, ACM, S3 SSE, TLS in transit**
+3. How do you detect threats? → **GuardDuty, Security Hub, Macie**
+4. How do you audit access? → **CloudTrail, IAM Access Analyzer**
+5. How do you protect the network? → **VPC, SGs, NACLs, WAF, Network Firewall**
+
+### Reliability
+1. How do you survive AZ failure? → **Multi-AZ, ASG across AZs**
+2. How do you survive region failure? → **Multi-region, Route 53 failover, S3 CRR**
+3. How do you auto-recover? → **ASG health checks, RDS Multi-AZ failover**
+4. How do you test recovery? → **DR drills, backup restore tests, chaos engineering**
+5. How do you handle traffic spikes? → **Auto Scaling, SQS buffering, CloudFront**
+
+### Performance Efficiency
+1. How do you right-size? → **Compute Optimizer, CloudWatch metrics**
+2. How do you go global? → **CloudFront, Global Accelerator, multi-region**
+3. How do you use serverless? → **Lambda, DynamoDB on-demand, Fargate**
+4. How do you cache? → **CloudFront, ElastiCache, DAX, API Gateway caching**
+5. How do you match tech to workload? → **S3 for objects, EBS for block, EFS for shared files**
+
+### Cost Optimization
+1. How do you reduce compute cost? → **RI/Savings Plans, Spot, Graviton, right-sizing**
+2. How do you reduce storage cost? → **S3 lifecycle, IA, Glacier, Intelligent-Tiering**
+3. How do you monitor spend? → **Cost Explorer, Budgets, Anomaly Detection**
+4. How do you attribute costs? → **Cost allocation tags, CUR**
+5. How do you avoid waste? → **Trusted Advisor, delete unused resources, stop dev instances**
+
+### Sustainability
+1. How do you reduce environmental impact? → **Right-size, Graviton (ARM), managed services**
+2. How do you maximize utilization? → **Auto Scaling (scale in), consolidate workloads**
+3. How do you measure impact? → **Customer Carbon Footprint Tool**
+
+---
+
+## Common Exam Traps by Pillar
+
+| Pillar | Trap | Correct thinking |
+|---|---|---|
+| Security | Pick most restrictive even if it breaks functionality | Balance security with requirements stated in stem |
+| Reliability | Pick most expensive HA option when stem says "cost-effective" | Match HA level to stated RTO/RPO |
+| Performance | Over-provision "just to be safe" | Right-size; use auto scaling |
+| Cost | Pick cheapest even if it sacrifices stated requirement | Cheapest that meets ALL requirements |
+| Ops | Pick manual process when automation exists | Automate everything possible |
+
+---
+
+## Sustainability Deep Dive (increasingly tested)
+- **Graviton processors** (ARM) = up to 40% better performance per watt.
+- **Managed services** = higher utilization of shared infrastructure = less waste.
+- **Auto Scaling** = scale in during low demand = less idle resources.
+- **S3 Intelligent-Tiering** = automatic optimization = less wasted storage.
+- **Delete unused resources** = snapshots, EIPs, old AMIs, detached EBS.
+- **Spot Instances** = use spare capacity = more efficient data center utilization.
+- **Serverless** = no idle compute = pay only for actual usage.

@@ -263,3 +263,200 @@ Write HA DB?                   → Multi-AZ (RDS/Aurora)
 ---
 
 *Aligned to SAA-C03 Domain 2: Design Resilient Architectures (26%). Cross-check service limits and pricing on AWS docs before exam day.*
+
+---
+
+## Route 53 Deep Dive
+
+### All routing policies with exam scenarios
+| Policy | How it works | Exam scenario |
+|---|---|---|
+| **Simple** | One record, one value; no health check routing | Single resource, no failover needed |
+| **Weighted** | Split traffic by weight (0–255); sum doesn't need to equal 100 | Blue/green deployment (90/10), A/B testing |
+| **Latency** | Route to region with lowest latency for user | Global app, users worldwide |
+| **Failover** | Active (primary) + Passive (secondary) with health checks | DR: primary in us-east-1, standby in us-west-2 |
+| **Geolocation** | Route by user's geographic location (continent/country) | Content licensing by region, GDPR data residency |
+| **Geoproximity** | Route by geographic proximity with **bias** (+/-) | Shift traffic toward one region (e.g., bias +50 toward us-east-1) |
+| **Multi-value** | Return multiple healthy records (up to 8) | Simple load spread with health checks (not a true LB) |
+
+### Health check types
+| Type | Checks | Use case |
+|---|---|---|
+| **Endpoint** | HTTP/HTTPS/TCP to IP or domain | Is my web server alive? |
+| **Calculated** | Combines multiple child health checks (AND/OR) | Complex failover logic |
+| **CloudWatch alarm** | Based on CW metric threshold | Failover when CPU > 90% |
+
+### Alias records vs CNAME
+| | **Alias** | **CNAME** |
+|---|---|---|
+| Target | AWS resources (ALB, CloudFront, S3 website, API GW) | Any DNS name |
+| Apex/root domain | **Yes** (zone apex) | **No** (can't CNAME apex) |
+| Cost | Free (no query charge for alias to AWS resource) | Standard query charge |
+| **Exam tip** | Always use Alias for AWS resources | Use CNAME for non-AWS targets |
+
+### Private hosted zones
+- DNS resolution **within VPC** only (associate VPC with hosted zone).
+- **Split-horizon DNS:** same domain resolves differently inside VPC vs public internet.
+- **Route 53 Resolver:** hybrid DNS — forward queries between on-prem and AWS.
+
+---
+
+## DR Strategy Master Table
+
+| Strategy | RTO | RPO | Cost | How it works | Key services |
+|---|---|---|---|---|---|
+| **Backup & Restore** | Hours–days | Hours–24h | $ | Periodic backups; restore on disaster | AWS Backup, EBS snapshots, RDS snapshots, S3 |
+| **Pilot Light** | 10s of min | Minutes | $$ | Core services running at minimal scale; scale up on DR | RDS snapshot in DR region, AMIs, Route 53 failover |
+| **Warm Standby** | Minutes | Seconds–min | $$$ | Scaled-down full environment always running | ASG (min=1) in DR region, RDS read replica, Route 53 |
+| **Multi-Site Active-Active** | Near zero | Near zero | $$$$ | Full capacity in multiple regions simultaneously | Aurora Global DB, DynamoDB Global Tables, Route 53 latency |
+
+### AWS Backup vs manual snapshots
+| | **AWS Backup** | **Manual snapshots** |
+|---|---|---|
+| Scope | Cross-service (EC2, EBS, RDS, DynamoDB, EFS, FSx) | Per-service |
+| Scheduling | Centralized backup plans | Per-resource cron/Lambda |
+| Lifecycle | Automated retention rules | Manual deletion |
+| Cross-region | Cross-region copy in backup plan | Manual copy |
+| **Exam pick** | "Centralized backup policy across services" | "Quick one-off EBS snapshot" |
+
+### Aurora Global Database vs RDS cross-region replica
+| | **Aurora Global DB** | **RDS cross-region read replica** |
+|---|---|---|
+| Replication | <1 second (storage-level) | Async (seconds–minutes) |
+| Failover | Managed promotion (<1 min RTO) | Manual promote replica |
+| Read scaling | Local reads in secondary region | Read replica in secondary region |
+| **Exam pick** | "Lowest RPO cross-region for Aurora" | "Read scaling + eventual DR for RDS" |
+
+---
+
+## SQS / SNS / EventBridge Advanced
+
+### SQS FIFO details
+- **Message group ID** — ordering scope (all messages with same group ID are ordered).
+- **Deduplication ID** — 5-minute dedup window; or enable **content-based deduplication**.
+- **Throughput:** 300 msg/s per queue (3,000 with batching); use multiple message groups for parallelism.
+
+### SNS message filtering
+- Subscribe with **filter policy** (JSON) — only matching messages delivered to that subscriber.
+- Example: `{"eventType": ["order_placed"]}` — subscriber only gets order events.
+
+### EventBridge advanced features
+| Feature | Purpose |
+|---|---|
+| **Pipes** | Point-to-point integration with optional filtering/transform |
+| **Schedules** | Cron/rate expressions trigger targets (replaces CloudWatch Events rules) |
+| **Schema Registry** | Discover and validate event schemas |
+| **Archive & Replay** | Store events for 24h–365 days; replay for debugging |
+| **Cross-account** | Resource policy on event bus allows other accounts to send events |
+
+### Step Functions error handling
+| State feature | Purpose |
+|---|---|
+| **Retry** | Automatic retry with backoff (IntervalSeconds, MaxAttempts, BackoffRate) |
+| **Catch** | Handle errors → transition to fallback state (e.g., notify + DLQ) |
+| **Choice** | Branch based on input (if/else logic) |
+| **Parallel** | Execute branches concurrently |
+| **Map** | Iterate over array items (batch processing) |
+| **Standard vs Express** | Standard = durable, exactly-once, up to 1 year; Express = high volume, at-least-once, up to 5 min |
+
+---
+
+## Auto Scaling Deep Dive
+
+### Lifecycle hooks
+- Pause instance at **launching** or **terminating** → run custom action (install software, drain connections) → complete lifecycle action.
+- Use **SSM Automation** or **Lambda** as hook target.
+
+### Warm pools
+- Pre-initialized instances ready to launch faster (reduces scale-out latency).
+- Instances in warm pool = stopped or running at reduced capacity.
+
+### Mixed instances policy
+- Combine **On-Demand** (base capacity) + **Spot** (additional capacity) in one ASG.
+- Allocation strategies: lowest price, diversified, capacity optimized.
+
+### ECS / EKS auto scaling
+| Service | Scaling mechanism |
+|---|---|
+| **ECS** | Service Auto Scaling (target tracking on CPU/memory) + Capacity Provider (Fargate/EC2/Spot) |
+| **EKS** | Cluster Autoscaler (adds/removes nodes) + HPA (pod-level) + Karpenter (node provisioning) |
+| **DynamoDB** | Auto Scaling on WCU/RCU or **On-Demand** mode (no capacity planning) |
+
+---
+
+## Domain 2 — Additional quick-fire Qs (Q41–Q60)
+
+- Q41: Web app traffic spikes 10x on Black Friday → **ALB + ASG with target tracking scaling policy**.
+- Q42: Order processing must not lose messages even if consumer crashes → **SQS with DLQ** + idempotent consumers.
+- Q43: One S3 upload triggers 3 different processing pipelines → **S3 event notification → SNS topic → 3 SQS queues** (fan-out).
+- Q44: DR with RTO < 1 hour, RPO < 5 minutes for Aurora → **Aurora Global Database** with managed failover.
+- Q45: Gradually shift traffic from old to new app version → **Route 53 weighted routing** (90/10 → 50/50 → 0/100).
+- Q46: Primary region fails; auto-route to DR region → **Route 53 failover routing** with health checks.
+- Q47: Users worldwide need lowest latency → **Route 53 latency routing** to nearest region.
+- Q48: Long-running workflow with human approval step → **Step Functions Standard** with Wait state + callback.
+- Q49: Process 10,000 S3 objects in parallel → **Step Functions Map state** over S3 object list.
+- Q50: Microservices communicate asynchronously → **SQS queues** between services (not direct HTTP calls).
+- Q51: Scheduled daily report generation → **EventBridge schedule rule** → Lambda.
+- Q52: SaaS app sends webhook events to your AWS account → **EventBridge partner event bus**.
+- Q53: ASG needs to run config script before accepting traffic → **Lifecycle hook** at launching + SSM/CloudInit.
+- Q54: Reduce scale-out time for latency-sensitive app → **ASG warm pool** with pre-initialized instances.
+- Q55: Mix cheap Spot with reliable On-Demand in same ASG → **Mixed instances policy**.
+- Q56: Database failover with zero data loss in same region → **RDS Multi-AZ** (synchronous replication).
+- Q57: Read-heavy workload overwhelming primary DB → **Read replicas** (async, read scaling).
+- Q58: Entire AZ goes down; web tier survives → **ASG across multiple AZs** + **ALB cross-zone load balancing**.
+- Q59: Centralized backup for EC2, RDS, EFS with 30-day retention → **AWS Backup** with backup plan.
+- Q60: Deploy new app version with zero downtime → **Elastic Beanstalk blue/green** or **CodeDeploy blue/green**.
+
+---
+
+## Domain 2 — Exam Scenario Walkthroughs
+
+### Scenario 1: Traffic spike handling
+**Stem:** E-commerce site gets 20x traffic during sales. Current single EC2 can't handle it.
+**Answer:** ALB + ASG with target tracking (CPU 50%) across multiple AZs + RDS Multi-AZ.
+**Traps:** Bigger instance (vertical scaling, single point of failure). CloudFront alone (doesn't scale compute).
+
+### Scenario 2: Decouple order processing
+**Stem:** Order API receives 1000 orders/sec. Processing takes 5 seconds each. API must respond in <200ms.
+**Answer:** API receives order → puts message on **SQS** → returns 202 immediately → worker fleet processes from queue.
+**Traps:** Synchronous processing (timeout). SNS (push, no buffering).
+
+### Scenario 3: Multi-region DR with minimal RPO
+**Stem:** Financial app in us-east-1; DR in eu-west-1; RPO < 1 second; automated failover.
+**Answer:** **Aurora Global Database** (storage-level replication <1s) + Route 53 failover health checks.
+**Traps:** RDS cross-region read replica (manual promotion, higher RPO). S3 CRR (object storage, not DB).
+
+### Scenario 4: Event-driven image processing
+**Stem:** Users upload photos to S3; generate thumbnails and run ML analysis asynchronously.
+**Answer:** S3 event notification → **SQS** → Lambda (thumbnail) + S3 event → **SNS** → SQS → Lambda (ML).
+**Traps:** S3-triggered Lambda directly (no retry/DLQ buffer). Polling S3 (inefficient).
+
+### Scenario 5: Blue/green deployment
+**Stem:** Deploy new version with ability to instantly roll back; minimal risk.
+**Answer:** Route 53 weighted routing (0% new → test → shift 100%) OR Elastic Beanstalk blue/green OR CodeDeploy.
+**Traps:** In-place deployment (no instant rollback). Replacing ASG (downtime).
+
+### Scenario 6: Workflow with error handling
+**Stem:** Process invoices: validate → charge payment → send confirmation. If payment fails, notify admin and retry 3 times.
+**Answer:** **Step Functions** with Retry on payment task + Catch → notify admin state.
+**Traps:** Lambda chaining (no built-in retry/orchestration). SQS (no workflow logic).
+
+### Scenario 7: Global users, lowest latency
+**Stem:** SaaS app deployed in us-east-1, eu-west-1, ap-southeast-1. Route users to nearest.
+**Answer:** **Route 53 latency routing** policy with health checks on each region's ALB.
+**Traps:** Geolocation (routes by location, not measured latency). Weighted (doesn't consider user location).
+
+### Scenario 8: Scheduled batch processing
+**Stem:** Every night at 2 AM, process all new records and generate reports.
+**Answer:** **EventBridge schedule rule** (cron: `0 2 * * ? *`) → Lambda or Step Functions.
+**Traps:** CloudWatch alarm (metric-based, not time-based). Lambda with external cron (operational overhead).
+
+### Scenario 9: Survive AZ failure
+**Stem:** Production app must survive complete loss of one Availability Zone.
+**Answer:** ASG across **≥2 AZs** + ALB + RDS Multi-AZ + ElastiCache cluster mode.
+**Traps:** Multi-AZ RDS alone (app tier still in one AZ). Single AZ with larger instances.
+
+### Scenario 10: Cross-service backup strategy
+**Stem:** Company needs unified backup for EC2, RDS, and EFS with daily snapshots and 90-day retention.
+**Answer:** **AWS Backup** with backup plan (daily schedule, 90-day lifecycle rule, cross-region copy optional).
+**Traps:** Individual snapshot scripts per service (operational overhead). S3 versioning (not a backup solution for compute/DB).

@@ -347,3 +347,183 @@ NETWORK
 ---
 
 *Content aligned to AWS SAA-C03 Exam Content Overview — Domain 4: Design Cost-Optimized Architectures. Verify pricing percentages and dollar amounts against current AWS documentation before exam day.*
+
+---
+
+## S3 Storage Class Decision Tree
+
+```
+Access frequency?
+├── Frequent → S3 Standard
+├── Unknown/changing → S3 Intelligent-Tiering (auto-moves between tiers)
+├── Infrequent (monthly) → S3 Standard-IA (min 30 days, retrieval fee)
+│   └── Can tolerate AZ loss? → S3 One Zone-IA (cheaper, single AZ)
+└── Archive
+    ├── Instant access needed → Glacier Instant Retrieval
+    ├── Minutes-hours OK → Glacier Flexible Retrieval
+    └── 12+ hours OK → Glacier Deep Archive (cheapest)
+```
+
+### Lifecycle policy example
+```json
+{
+  "Rules": [{
+    "ID": "TierAndArchive",
+    "Status": "Enabled",
+    "Transitions": [
+      {"Days": 30, "StorageClass": "STANDARD_IA"},
+      {"Days": 90, "StorageClass": "GLACIER"},
+      {"Days": 365, "StorageClass": "DEEP_ARCHIVE"}
+    ],
+    "Expiration": {"Days": 2555}
+  }]
+}
+```
+
+### Glacier retrieval tiers
+| Tier | Access time | Cost | Use case |
+|---|---|---|---|
+| **Expedited** | 1–5 min | $$$ | Urgent restore |
+| **Standard** | 3–5 hours | $$ | Normal restore |
+| **Bulk** | 5–12 hours | $ | Large-scale restore |
+
+---
+
+## Compute Pricing Deep Dive
+
+### Reserved Instances types
+| Type | Flexibility | Discount | Exam note |
+|---|---|---|---|
+| **Standard RI** | Fixed instance family/AZ | Up to 72% | Steady, predictable workload |
+| **Convertible RI** | Can change family/OS/tenancy | Up to 54% | Might need to change instance type |
+| **Scheduled RI** | Specific time windows | Varies | Batch jobs on schedule (rare) |
+
+### Savings Plans
+| Plan | Applies to | Flexibility |
+|---|---|---|
+| **Compute SP** | EC2, Lambda, Fargate | Any instance family, region, OS |
+| **EC2 Instance SP** | EC2 only | Specific instance family in region |
+
+**Exam:** "flexible compute commitment" → **Compute Savings Plan** (not RI).
+
+### Spot Instances
+- Up to **90% discount**; 2-minute interruption notice.
+- **Spot Fleet** — request mix of instance types/AZs; allocation strategies: lowestPrice, diversified, capacityOptimized.
+- **Good for:** batch, CI/CD, stateless, fault-tolerant, big data.
+- **Bad for:** databases, single-instance critical apps.
+
+### Lambda cost factors
+- **Charged:** requests + duration (GB-seconds) + provisioned concurrency.
+- **Provisioned concurrency** = pre-warmed instances (costs even when idle) — use for latency-sensitive.
+- **Exam:** intermittent/unpredictable → Lambda cheaper than always-on EC2.
+
+---
+
+## Data Transfer Cost Gotchas
+
+| Transfer type | Cost | Optimization |
+|---|---|---|
+| **Internet egress** | $0.09/GB (varies by region) | CloudFront (cheaper egress), VPC endpoints |
+| **Inter-AZ** | $0.01/GB each direction | Keep communication within same AZ where possible |
+| **Inter-region** | $0.02/GB+ | Replicate only what's needed; use CloudFront |
+| **Same-AZ** | Free | Design for AZ-local traffic |
+| **NAT Gateway** | $0.045/GB processed + hourly | **VPC endpoints** for S3/DynamoDB/other APIs |
+| **CloudFront origin fetch** | Cheaper than direct S3 internet egress | Always put CloudFront in front of public S3 |
+
+### NAT Gateway cost savings example
+- 1 TB/month S3 access from private subnet via NAT = ~$45 data processing + $32 hourly.
+- Same via **S3 Gateway Endpoint** = **$0**.
+- **Exam:** "minimize data transfer costs from private subnet to S3" → **Gateway Endpoint**.
+
+---
+
+## Cost Management Tools
+
+| Tool | Purpose | Exam trigger |
+|---|---|---|
+| **Cost Explorer** | Visualize spending trends, forecasts | "analyze spending patterns" |
+| **AWS Budgets** | Set spending alerts and automated actions | "alert when spend exceeds $X" |
+| **Cost Anomaly Detection** | ML-based unusual spend alerts | "detect unexpected cost spikes" |
+| **Compute Optimizer** | Rightsizing recommendations for EC2, EBS, Lambda | "recommend smaller instances" |
+| **Trusted Advisor** | Best-practice checks (cost, security, performance) | "identify idle resources" |
+| **CUR (Cost & Usage Report)** | Detailed hourly cost data → Athena/QuickSight | "detailed cost analysis/reporting" |
+| **Cost Allocation Tags** | Tag resources for per-team/project billing | "attribute costs to departments" |
+
+---
+
+## Domain 4 — Additional quick-fire Qs (Q41–Q60)
+
+- Q41: 3-year steady EC2 workload, might change instance family → **Convertible RI** or **Compute Savings Plan**.
+- Q42: Batch job can tolerate interruption → **Spot Instances** (up to 90% savings).
+- Q43: 10 TB infrequently accessed data → **S3 Standard-IA** (not Standard).
+- Q44: Archive data accessed once a year → **S3 Glacier Deep Archive**.
+- Q45: Unknown access patterns → **S3 Intelligent-Tiering**.
+- Q46: Private subnet apps access S3 daily (1 TB) → **S3 Gateway Endpoint** (avoid NAT charges).
+- Q47: Idle EC2 running 24/7 at 5% CPU → **Rightsize** or **stop when not needed** (Trusted Advisor flag).
+- Q48: Dev environment only needed business hours → **Scheduled scaling** or stop/start with Lambda.
+- Q49: Lambda function with sporadic traffic → **On-demand Lambda** (not provisioned concurrency).
+- Q50: Lambda with strict <100ms latency requirement → **Provisioned concurrency** (costs more but no cold start).
+- Q51: 500 GB MySQL with steady load → **RDS Reserved Instance** (not on-demand).
+- Q52: Unpredictable NoSQL traffic → **DynamoDB on-demand** (not over-provisioned WCU).
+- Q53: Static website 1 TB/month egress → **CloudFront** (cheaper than S3 direct egress).
+- Q54: Company wants alert when monthly spend exceeds $10K → **AWS Budgets**.
+- Q55: Sudden unexplained cost spike → **Cost Anomaly Detection**.
+- Q56: Per-department AWS billing → **Cost allocation tags** + Cost Explorer filter.
+- Q57: EBS gp2 volume on I/O-light workload → **Migrate to gp3** (cheaper, same performance).
+- Q58: 3-year SQL Server license already owned → **Dedicated Host** (bring your own license).
+- Q59: Auto-archive logs older than 90 days → **S3 lifecycle policy** → Glacier.
+- Q60: Detailed hourly cost breakdown for finance team → **CUR** exported to S3 → **Athena** queries.
+
+---
+
+## Domain 4 — Exam Scenario Walkthroughs
+
+### Scenario 1: Steady-state compute savings
+**Stem:** 20 m5.xlarge instances run 24/7 for 3 years; won't change instance family.
+**Answer:** **Standard Reserved Instances** (1 or 3 year, all upfront = max discount).
+**Traps:** On-Demand (most expensive). Spot (can be interrupted).
+
+### Scenario 2: Storage lifecycle optimization
+**Stem:** 50 TB logs; accessed frequently for 30 days, then monthly for 1 year, then never.
+**Answer:** S3 Standard → lifecycle to **Standard-IA** at 30 days → **Glacier Flexible** at 365 days → expire at 7 years.
+**Traps:** All Standard (expensive for old data). All Glacier (retrieval fees for monthly access).
+
+### Scenario 3: Minimize NAT costs
+**Stem:** 50 EC2 instances in private subnets access S3 and DynamoDB heavily.
+**Answer:** **Gateway VPC endpoints** for S3 and DynamoDB (free, no NAT data processing charges).
+**Traps:** NAT Gateway (charges per GB). Interface endpoints (hourly cost, overkill for S3/DDB).
+
+### Scenario 4: Spot for fault-tolerant workload
+**Stem:** Nightly batch job processes 1M records; can restart if interrupted; minimize cost.
+**Answer:** **Spot Instances** with Spot Fleet (diversified allocation) + SQS checkpointing.
+**Traps:** On-Demand (10x more expensive). Reserved (wrong for intermittent).
+
+### Scenario 5: Serverless cost optimization
+**Stem:** API with 100 requests/day average, 10K spike once a month; must respond <500ms during spikes.
+**Answer:** **Lambda on-demand** (pay per invocation) + **API Gateway** caching for repeated queries.
+**Traps:** Always-on EC2 (paying 24/7 for 100 req/day). Provisioned concurrency (unnecessary cost for low traffic).
+
+### Scenario 6: Database cost optimization
+**Stem:** MySQL database with steady 500 queries/sec; 3-year commitment acceptable.
+**Answer:** **RDS Reserved Instance** + right-sized instance (db.r6g.large, not oversized).
+**Traps:** Aurora Serverless (pay per ACU, expensive at steady load). On-Demand RDS.
+
+### Scenario 7: Cost monitoring setup
+**Stem:** CFO wants alerts at 80% and 100% of $50K monthly budget; per-team cost breakdown.
+**Answer:** **AWS Budgets** (alerts at thresholds) + **cost allocation tags** on all resources + **Cost Explorer** dashboards.
+**Traps:** CloudWatch alarms (don't track billing). Trusted Advisor (recommendations, not budgets).
+
+### Scenario 8: Data transfer optimization
+**Stem:** Global users download 5 TB/month of content from S3 in us-east-1.
+**Answer:** **CloudFront** distribution (cheaper egress + edge caching) + S3 origin.
+**Traps:** Direct S3 access (expensive internet egress). Global Accelerator (no caching, wrong for static content).
+
+### Scenario 9: EBS optimization
+**Stem:** Development EBS volumes on gp2; low I/O; 20 volumes across team.
+**Answer:** Migrate to **gp3** (20% cheaper, same baseline IOPS) + delete unattached volumes (Trusted Advisor).
+**Traps:** io2 (overkill for dev). Keeping gp2 (paying more for same performance).
+
+### Scenario 10: Comprehensive cost review
+**Stem:** AWS bill grew 40% last quarter; need to identify waste and optimize.
+**Answer:** **Cost Explorer** (trend analysis) + **Compute Optimizer** (rightsizing) + **Trusted Advisor** (idle resources) + **S3 Storage Lens** (storage analysis).
+**Traps:** Manual review (slow). Deleting everything (availability risk).

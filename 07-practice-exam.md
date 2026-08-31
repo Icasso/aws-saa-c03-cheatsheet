@@ -1,5 +1,5 @@
 # Practice Exam — AWS Certified Solutions Architect — Associate (SAA-C03)
-**40 scenario questions, domain-tagged. Solve them FIRST. Answer key + explanations at the bottom
+**65 scenario questions, domain-tagged. Solve them FIRST. Answer key + explanations at the bottom
 (scrolled past the questions — don't skip over it but don't read it early).**
 
 Style notes: real exam includes MCQ (one correct) and multiple-response ("Select all that apply"
@@ -305,6 +305,186 @@ experience?
 
 ---
 
+
+**Q41. [D1]** A company with 30 AWS accounts needs consistent WAF rules applied across all
+accounts without configuring each account individually. Which service should they use?
+- A. AWS Config
+- B. **AWS Firewall Manager**
+- C. Amazon GuardDuty
+- D. AWS Security Hub
+
+**Q42. [D2]** A company needs to connect 15 VPCs and an on-premises datacenter through a single
+hub. Which service simplifies this network topology?
+- A. VPC Peering mesh between all VPCs
+- B. **AWS Transit Gateway**
+- C. AWS PrivateLink
+- D. Multiple Site-to-Site VPN connections
+
+**Q43. [D2]** A workflow must process an order: validate inventory → charge payment → ship.
+If payment fails after 3 retries, notify admin and stop. Which service orchestrates this?
+- A. SQS with DLQ
+- B. **AWS Step Functions** with Retry and Catch states
+- C. SNS topic with email subscription
+- D. EventBridge rule
+
+**Q44. [D3]** A genomics company runs tightly coupled MPI jobs requiring the lowest possible
+network latency between instances in the same AZ. Which placement group should they use?
+- A. Spread
+- B. Partition
+- C. **Cluster**
+- D. No placement group
+
+**Q45. [D3]** A company needs a shared Windows file system accessible from multiple EC2 instances
+across AZs with Active Directory integration. Which service should they use?
+- A. Amazon EFS
+- B. **Amazon FSx for Windows File Server**
+- C. Amazon S3
+- D. AWS Storage Gateway
+
+**Q46. [D4]** A company wants to detect unusual spending patterns automatically without setting
+manual thresholds. Which service should they use?
+- A. AWS Budgets
+- B. **AWS Cost Anomaly Detection**
+- C. AWS Trusted Advisor
+- D. Cost Explorer
+
+**Q47. [D1]** A SaaS provider needs to offer their API to customers in other VPCs without
+exposing it to the public internet. Which networking feature should they use?
+- A. VPC Peering
+- B. **AWS PrivateLink** (VPC Endpoint Service)
+- C. Transit Gateway
+- D. Internet Gateway
+
+**Q48. [D2]** A company must migrate 200 on-premises virtual machines to AWS with minimal
+downtime and ongoing replication until cutover. Which service should they use?
+- A. AWS Database Migration Service
+- B. **AWS Application Migration Service (MGN)**
+- C. AWS DataSync
+- D. AWS Snowball
+
+**Q49. [D3]** A real-time analytics dashboard needs to process 50,000 events per second from
+clickstream data with custom processing logic. Which service should they use?
+- A. SQS Standard
+- B. **Amazon Kinesis Data Streams**
+- C. Amazon Kinesis Data Firehose
+- D. Amazon SNS
+
+**Q50. [D1]** A company must ensure database credentials are never stored in application code
+and are automatically rotated every 30 days with zero application downtime. Which service?
+- A. SSM Parameter Store (Standard)
+- B. **AWS Secrets Manager** with automatic rotation
+- C. Encrypted S3 object
+- D. AWS KMS
+
+**Q51. [D2]** A global application in us-east-1 and eu-west-1 must route European users to
+eu-west-1 and American users to us-east-1 based on geographic location. Which Route 53 policy?
+- A. Latency routing
+- B. **Geolocation routing**
+- C. Weighted routing
+- D. Simple routing
+
+**Q52. [D3]** A Lambda function experiences cold starts causing 2-second delays for a
+latency-sensitive API that receives steady traffic 24/7. How should they eliminate cold starts?
+- A. Increase Lambda memory to maximum
+- B. **Enable provisioned concurrency**
+- C. Switch to EC2 On-Demand
+- D. Use Lambda SnapStart
+
+**Q53. [D4]** A company has 5 TB of log data in S3 Standard accessed once every 90 days for
+compliance audits. Which storage optimization saves the most money?
+- A. Keep in S3 Standard
+- B. **S3 lifecycle policy transitioning to Glacier Flexible Retrieval after 30 days**
+- C. Move to S3 One Zone-IA immediately
+- D. Enable S3 versioning
+
+**Q54. [D1]** A security team needs to prevent any IAM user or role in the organization from
+creating resources in regions other than us-east-1 and eu-west-1. Which control should they use?
+- A. IAM permission boundary
+- B. **Service Control Policy (SCP)**
+- C. Security group rule
+- D. AWS WAF rule
+
+**Q55. [D2]** An Auto Scaling group needs to launch Spot Instances for cost savings but maintain
+a minimum of 2 On-Demand instances at all times. Which ASG feature enables this?
+- A. Launch template only
+- B. **Mixed instances policy** with On-Demand base capacity
+- C. Scheduled scaling
+- D. Predictive scaling
+
+**Q56. [D3]** A data team needs to run ad-hoc SQL queries on 10 TB of Parquet files in S3
+without provisioning a database cluster. Which service should they use?
+- A. Amazon Redshift
+- B. **Amazon Athena**
+- C. Amazon RDS
+- D. Amazon EMR
+
+**Q57. [D1]** A mobile application needs users to sign in with Google and then upload photos
+directly to S3 using temporary AWS credentials. Which combination of services?
+- A. IAM users with access keys
+- B. **Cognito User Pool (Google federation) + Cognito Identity Pool + IAM role**
+- C. API Gateway with IAM authorization
+- D. S3 presigned URLs only
+
+**Q58. [D2]** A company's primary database is in us-east-1. They need a DR copy in ap-southeast-1
+with RPO under 1 second and automated failover. The database is Aurora PostgreSQL. Which feature?
+- A. RDS cross-region read replica
+- B. **Aurora Global Database**
+- C. DMS ongoing replication
+- D. S3 backup and restore
+
+**Q59. [D3]** A web application stores session data. After Auto Scaling replaces instances,
+users lose their sessions. How should they fix this?
+- A. Use larger instances to reduce scaling events
+- B. **Store sessions in ElastiCache Redis or DynamoDB**
+- C. Enable sticky sessions on the ALB only
+- D. Use EBS Multi-Attach for session storage
+
+**Q60. [D4]** A development team runs 10 m5.2xlarge instances 24/7 but monitoring shows average
+CPU utilization of 8%. What is the MOST cost-effective first step?
+- A. Purchase 3-year Reserved Instances for m5.2xlarge
+- B. **Right-size to smaller instances (e.g., m5.large) using Compute Optimizer recommendations**
+- C. Switch to Spot Instances
+- D. Enable Auto Scaling with minimum 10
+
+**Q61. [D1]** A company needs to prove that all API activity across 20 accounts is logged
+centrally and cannot be disabled by individual account administrators. Which architecture?
+- A. CloudTrail in each account with S3 export
+- B. **CloudTrail organization trail in a centralized log archive account + SCP denying StopLogging**
+- C. VPC Flow Logs in each VPC
+- D. GuardDuty in each account
+
+**Q62. [D2]** An S3 bucket receives millions of PUT requests per second. The company is
+experiencing throttling on a single prefix. What should they do?
+- A. Enable S3 Transfer Acceleration
+- B. **Add random prefixes to object keys to distribute requests across partitions**
+- C. Switch to EBS volumes
+- D. Use S3 Object Lock
+
+**Q63. [D3]** A company needs to run Apache Spark jobs on large datasets in S3 weekly.
+They want managed infrastructure with minimal operational overhead. Which service?
+- A. EC2 instances with Spark installed manually
+- B. **AWS Glue** (serverless Spark ETL)
+- C. Amazon Athena
+- D. Amazon Kinesis
+
+**Q64. [D1]** Financial regulators require that S3 objects containing transaction records
+cannot be deleted or overwritten for 5 years, even by root users. Which S3 feature?
+- A. S3 versioning
+- B. **S3 Object Lock in compliance mode**
+- C. S3 bucket policy Deny delete
+- D. MFA Delete
+
+**Q65. [D2]** A company deploys infrastructure across 5 accounts using CloudFormation.
+They need to detect when someone manually changes a resource outside of CloudFormation.
+Which service should they use?
+- A. AWS Config
+- B. **CloudFormation drift detection**
+- C. CloudTrail
+- D. AWS Systems Manager
+
+
+---
+
 # ANSWER KEY & EXPLANATIONS
 *(Stop here and only read after you finish.)*
 
@@ -351,12 +531,48 @@ experience?
 | 39 | **B** | **AWS Budgets** sends threshold alerts; **Cost Explorer** analyzes historical spend by dimension. CloudTrail is audit, not billing alerts. |
 | 40 | **B** | **CloudFront** caches at edge — repeat views don't re-fetch from S3 (saves transfer + improves latency). Transfer Acceleration helps cross-Region/long distance, not same-Region repeat access. |
 
+
+| 41 | **B** | **Firewall Manager** centrally manages WAF rules, Security Groups, and Network Firewall policies across accounts. Config checks compliance; GuardDuty detects threats. |
+| 42 | **B** | **Transit Gateway** is a network hub connecting VPCs, VPN, and DX. VPC peering mesh doesn't scale to 15 VPCs. PrivateLink is for service access, not full network connectivity. |
+| 43 | **B** | **Step Functions** orchestrates multi-step workflows with built-in Retry, Catch, Choice, and Parallel states. SQS/SNS lack workflow logic. |
+| 44 | **C** | **Cluster placement group** packs instances on same AZ hardware for lowest latency (HPC/MPI). Spread = isolation; Partition = large distributed systems. |
+| 45 | **B** | **FSx for Windows** provides managed SMB file shares with AD integration. EFS is NFS (Linux). S3 is object storage. |
+| 46 | **B** | **Cost Anomaly Detection** uses ML to detect unusual spending without manual thresholds. Budgets require you to set thresholds. |
+| 47 | **B** | **PrivateLink (VPC Endpoint Service)** exposes your service privately to consumer VPCs via NLB. Peering gives full network access (too broad). |
+| 48 | **B** | **MGN** replicates servers continuously with minimal downtime cutover. DMS is for databases. DataSync is file transfer. |
+| 49 | **B** | **Kinesis Data Streams** handles real-time custom processing at scale. Firehose loads to destinations (no custom logic). SQS is not real-time streaming. |
+| 50 | **B** | **Secrets Manager** auto-rotates credentials with Lambda integration. Parameter Store doesn't auto-rotate. KMS encrypts but doesn't store/rotate secrets. |
+| 51 | **B** | **Geolocation routing** routes by user's geographic location (continent/country). Latency routes by measured latency (not geography). |
+| 52 | **B** | **Provisioned concurrency** keeps Lambda instances warm, eliminating cold starts. More memory helps duration cost, not cold starts. SnapStart is for Java only. |
+| 53 | **B** | **Lifecycle to Glacier Flexible** after 30 days saves storage cost for data accessed every 90 days. Standard is expensive for infrequent access. |
+| 54 | **B** | **SCPs** apply org-wide guardrails that even account admins cannot override. Permission boundaries cap individual roles, not regions org-wide. |
+| 55 | **B** | **Mixed instances policy** lets you specify On-Demand base capacity + Spot for additional. Launch template alone doesn't mix purchase options. |
+| 56 | **B** | **Athena** runs serverless SQL on S3 data (Parquet). Redshift requires a cluster. RDS is relational DB. EMR requires cluster management. |
+| 57 | **B** | **Cognito User Pool** (Google auth) + **Identity Pool** (temp AWS creds) + IAM role (S3 upload) is the standard mobile pattern. |
+| 58 | **B** | **Aurora Global Database** provides <1 second cross-region replication with managed failover. RDS cross-region replica has higher RPO and manual promotion. |
+| 59 | **B** | **ElastiCache/DynamoDB** for session state survives instance replacement. Sticky sessions alone fail when instances are terminated. |
+| 60 | **B** | **Right-sizing** first — 8% CPU on 2xlarge is massive waste. RI on wrong size locks in waste. Spot doesn't help steady 24/7 dev workloads. |
+| 61 | **B** | **Org trail** in centralized account + **SCP** preventing StopLogging ensures tamper-proof audit. Per-account trails can be disabled by admins. |
+| 62 | **B** | **Random key prefixes** distribute requests across S3 partitions (3,500 PUT/s per prefix limit). Transfer Acceleration is for upload speed, not throttling. |
+| 63 | **B** | **Glue** runs serverless Spark ETL. EMR requires cluster management. Athena is SQL-only. EC2 manual = high operational overhead. |
+| 64 | **B** | **Object Lock compliance mode** prevents deletion by anyone (including root) during retention. Versioning allows deletion of versions. Bucket policy can be changed by admin. |
+| 65 | **B** | **CloudFormation drift detection** identifies manual changes to stack-managed resources. Config tracks config changes broadly but drift detection is CFN-specific. |
+
 ## Score
-Correct / 40. On the real exam **~70% of scored Qs (~35/50) ≈ passing 720**.
-**Aim for 35/40 (87%) or better** to be safe given practice ≠ live.
-- **38–40:** strong pass.
-- **33–37:** ready with review.
-- **<33:** reread the relevant domain file for every miss, then the AWS Services Map, then re-do all questions you got wrong.
+Correct / 65. On the real exam **~70% of scored Qs (~35/50) ≈ passing 720**.
+**Aim for 55/65 (85%) or better** to ace the exam with confidence.
+- **58–65:** ace-level — you're ready.
+- **50–57:** strong pass — review misses in domain files.
+- **42–49:** borderline — focus on weak domains + services map.
+- **<42:** reread all domain files, do the 65 Qs again, then flashcards.
+
+## Ace-level tips
+1. **Speed:** 65 Qs in 130 min = 2 min/Q. Don't exceed 3 min on any single question.
+2. **Pattern recognition:** 80% of questions match a pattern in `10-exam-scenario-playbook.md`.
+3. **Priority words:** "MOST cost-effective" ≠ "MOST secure" ≠ "MOST performant" — the stem tells you which.
+4. **Managed > self-managed:** When in doubt, pick the AWS-managed service.
+5. **Multi-AZ > bigger instance:** Horizontal scaling beats vertical scaling on this exam.
+6. **After this practice exam:** For every miss, find the answer in `10-exam-scenario-playbook.md` and the relevant domain file. Re-do only your missed questions 24 hours later.
 
 ## How to read a miss
 For each wrong answer, **find the bolded service/concept in `05-aws-services-map-memorize.md`**,

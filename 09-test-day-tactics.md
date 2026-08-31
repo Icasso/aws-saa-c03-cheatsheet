@@ -70,3 +70,92 @@
 
 *You've read the domains, the services map, and 40 practice Qs. That's enough for a strong attempt.
 Sleep > cram. Good luck.*
+
+---
+
+## Keyword → Service Quick Lookup (scan this before the exam)
+
+| Keyword in stem | Likely answer |
+|---|---|
+| "long-term credentials" / "access keys on EC2" | IAM Role (NOT user) |
+| "automatic rotation" | Secrets Manager |
+| "SSO" / "single sign-on" / "multiple accounts" | IAM Identity Center |
+| "org-wide guardrail" / "prevent accounts from" | SCP |
+| "SQL injection" / "XSS" / "rate limit HTTP" | WAF |
+| "DDoS" | Shield |
+| "threat detection" / "compromised" / "anomalous" | GuardDuty |
+| "vulnerability" / "CVE" / "missing patches" | Inspector |
+| "PII" / "sensitive data in S3" | Macie |
+| "compliance reports" / "SOC" / "ISO" / "PCI" | Artifact |
+| "who deleted" / "API audit" | CloudTrail |
+| "is encryption enabled" / "config compliance" | Config |
+| "centralized security findings" | Security Hub |
+| "outbound internet from private subnet" | NAT Gateway |
+| "private access to S3" | Gateway VPC Endpoint |
+| "private access to KMS/SNS/SQS" | Interface VPC Endpoint |
+| "SSH without opening port 22" | SSM Session Manager |
+| "decouple" / "buffer" / "queue" | SQS |
+| "fan-out" / "notify many" | SNS |
+| "event routing" / "scheduled" / "cron" | EventBridge |
+| "workflow" / "orchestrate" / "retry logic" | Step Functions |
+| "read scaling database" | Read Replica |
+| "HA database failover" | Multi-AZ |
+| "cross-region DR database" | Aurora Global DB / S3 CRR |
+| "lowest RTO/RPO" | Multi-site active-active |
+| "global static content" | CloudFront |
+| "global TCP/UDP low latency" | Global Accelerator |
+| "route to nearest region" | Route 53 Latency |
+| "active/passive failover DNS" | Route 53 Failover |
+| "gradual traffic shift" | Route 53 Weighted |
+| "serverless API" | API Gateway + Lambda |
+| "NoSQL serverless" | DynamoDB on-demand |
+| "in-memory cache for DynamoDB" | DAX |
+| "in-memory cache for RDS" | ElastiCache |
+| "data warehouse" | Redshift |
+| "ad-hoc SQL on S3" | Athena |
+| "real-time streaming" | Kinesis Data Streams |
+| "load stream to S3" | Kinesis Firehose |
+| "ETL" / "data catalog" | Glue |
+| "migrate database" | DMS |
+| "migrate servers" | MGN |
+| "lift and shift" | MGN |
+| "IaC" / "infrastructure as code" | CloudFormation |
+| "steady-state discount" | RI / Savings Plans |
+| "interruptible / fault-tolerant compute" | Spot |
+| "archive storage" | S3 Glacier |
+| "infrequent access storage" | S3 IA / Intelligent-Tiering |
+| "WORM / immutable" | S3 Object Lock |
+| "FIPS HSM" | CloudHSM |
+| "TLS certificate" | ACM |
+| "mobile app auth" | Cognito User Pool |
+| "users upload to S3 directly" | Cognito Identity Pool |
+| "hub VPC connectivity" | Transit Gateway |
+| "dedicated private line" | Direct Connect |
+| "rightsizing" | Compute Optimizer |
+| "spending alert" | AWS Budgets |
+| "cost spike detection" | Cost Anomaly Detection |
+
+---
+
+## Time Management Strategy (130 min / 65 Qs)
+
+1. **First pass (90 min):** Answer every question. Flag uncertain ones. ~1.4 min/Q.
+2. **Second pass (30 min):** Revisit flagged questions. Eliminate wrong answers.
+3. **Final pass (10 min):** Ensure every question has an answer. Review multi-response Qs.
+4. **Never spend >3 min on one question** — flag and move on.
+
+## Multi-Response Strategy
+- Read "Select TWO" / "Select THREE" carefully — wrong extra selections can cost points.
+- Eliminate obviously wrong options first.
+- If unsure between 3 options for "Select TWO," pick the two you're most confident about.
+- Common pattern: 5 options, 2 correct + 3 traps.
+
+## Ace-Level Mindset
+- **Every question has ONE best answer** (or specific number for multi-response).
+- The stem always contains the priority: cost, security, performance, or availability.
+- **Match the stated priority**, not your personal preference.
+- AWS wants you to pick **managed services** over self-built solutions.
+- AWS wants you to pick **multiple AZs** over bigger single instances.
+- AWS wants you to pick **serverless/managed** over self-managed infrastructure.
+- When two answers both work, the more **AWS-native/managed** option usually wins.
+- "Least operational overhead" = managed service. Always.

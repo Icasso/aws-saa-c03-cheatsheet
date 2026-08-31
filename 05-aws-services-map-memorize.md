@@ -180,3 +180,120 @@
 - **DMS** (database migration) ≠ **MGN** (server/VM migration).
 - **Athena** (ad-hoc SQL on S3) ≠ **Redshift** (persistent data warehouse).
 - **Kinesis Data Streams** (custom consumers, real-time) ≠ **Kinesis Firehose** (load to destinations).
+
+---
+
+## Developer Tools & CI/CD
+| Service | Job | Domain |
+|---|---|---|
+| **CodeCommit** | Managed Git repos | 2 |
+| **CodeBuild** | Managed build (compile, test) | 2, 3 |
+| **CodeDeploy** | Automated deployment (blue/green, rolling) | 2 |
+| **CodePipeline** | CI/CD orchestration | 2 |
+| **CloudFormation** | Infrastructure as Code | 2 |
+| **CDK** | IaC in programming languages | 2 |
+| **SAM** | Serverless IaC | 2, 3 |
+
+## Migration & Transfer
+| Service | Job | Domain |
+|---|---|---|
+| **MGN** | Server/VM lift-and-shift migration | 2 |
+| **DMS** | Database migration with CDC | 2, 3 |
+| **DataSync** | Online data transfer on-prem ↔ AWS | 3 |
+| **Transfer Family** | SFTP/FTPS/FTP to S3/EFS | 3 |
+| **Snowball / Snowmobile** | Physical offline data transfer | 3 |
+
+## IoT
+| Service | Job | Domain |
+|---|---|---|
+| **IoT Core** | Device connectivity (MQTT/HTTP) | 3 |
+| **IoT Greengrass** | Edge computing for devices | 3 |
+| **IoT Analytics** | IoT data processing | 3 |
+
+## Additional In-Scope Services
+| Service | Job | Domain |
+|---|---|---|
+| **App Runner** | Containerized web apps from source | 3 |
+| **App Mesh** | Service mesh for microservices | 2, 3 |
+| **Lake Formation** | Data lake governance | 3 |
+| **OpenSearch Service** | Search + log analytics | 3 |
+| **MWAA** | Managed Apache Airflow | 3 |
+| **Firewall Manager** | Centralized WAF/SG management | 1 |
+| **RAM** | Share resources across accounts | 1, 2 |
+| **Service Catalog** | Governed self-service provisioning | 2 |
+| **Compute Optimizer** | Rightsizing recommendations | 4 |
+| **Cost Anomaly Detection** | ML-based spend alerts | 4 |
+| **S3 Storage Lens** | Org-wide storage analytics | 4 |
+| **S3 Object Lambda** | Transform objects on GET | 3 |
+| **S3 Access Points** | Named S3 endpoints with policies | 1, 4 |
+
+---
+
+## "If the question mentions X → pick Y" Master Table
+
+| Question mentions… | Pick… |
+|---|---|
+| access keys on EC2 | IAM Role |
+| automatic secret rotation | Secrets Manager |
+| SSO / multiple accounts | IAM Identity Center |
+| org-wide deny guardrail | SCP |
+| SQL injection / XSS | WAF |
+| DDoS | Shield |
+| threat / anomaly / compromised | GuardDuty |
+| vulnerability / CVE / patch | Inspector |
+| PII in S3 | Macie |
+| compliance report SOC/ISO | Artifact |
+| who called API / audit | CloudTrail |
+| is encryption on / config rule | Config |
+| centralized security dashboard | Security Hub |
+| outbound internet private subnet | NAT Gateway |
+| private S3 access | Gateway Endpoint |
+| private KMS/SNS/SQS access | Interface Endpoint |
+| SSH without port 22 | SSM Session Manager |
+| decouple / buffer / queue | SQS |
+| fan-out / notify many | SNS |
+| event routing / cron schedule | EventBridge |
+| workflow orchestration | Step Functions |
+| read scaling DB | Read Replica |
+| HA DB failover | Multi-AZ |
+| cross-region DR DB | Aurora Global DB |
+| global static content | CloudFront |
+| global TCP/UDP latency | Global Accelerator |
+| nearest region routing | Route 53 Latency |
+| active/passive DNS failover | Route 53 Failover |
+| gradual traffic shift | Route 53 Weighted |
+| serverless API | API Gateway + Lambda |
+| NoSQL serverless | DynamoDB on-demand |
+| cache DynamoDB reads | DAX |
+| cache RDS queries | ElastiCache |
+| data warehouse | Redshift |
+| SQL on S3 files | Athena |
+| real-time streaming | Kinesis Data Streams |
+| load stream to S3 | Kinesis Firehose |
+| ETL / data catalog | Glue |
+| migrate database | DMS |
+| migrate servers/VMs | MGN |
+| IaC | CloudFormation |
+| steady compute discount | RI / Savings Plans |
+| interruptible compute | Spot |
+| archive storage | Glacier |
+| infrequent S3 access | IA / Intelligent-Tiering |
+| immutable / WORM | Object Lock |
+| FIPS HSM | CloudHSM |
+| TLS certificate | ACM |
+| mobile app sign-in | Cognito User Pool |
+| users upload to S3 | Cognito Identity Pool |
+| hub VPC connectivity | Transit Gateway |
+| dedicated private line | Direct Connect |
+| rightsizing | Compute Optimizer |
+| spending alert | Budgets |
+| cost spike detection | Cost Anomaly Detection |
+| centralized WAF rules | Firewall Manager |
+| Windows file share | FSx for Windows |
+| HPC file system | FSx for Lustre |
+| HPC low latency | Placement Group Cluster |
+| 15+ VPCs connected | Transit Gateway |
+| offer API privately | PrivateLink |
+| detect manual infra changes | CloudFormation drift |
+| provisioned Lambda no cold start | Provisioned Concurrency |
+| mix On-Demand + Spot in ASG | Mixed Instances Policy |

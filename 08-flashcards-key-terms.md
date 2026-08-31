@@ -114,3 +114,86 @@
 - **No negative marking.** Flag and move on. Never leave blank.
 - **Multiple-response** — wrong extra picks can cost you; only select what you're sure of.
 - Scenario questions ask "MOST appropriate" — match the **stated priority** (cost vs security vs performance).
+
+## Developer & DevOps Tools
+- **CodeCommit** — managed Git repository.
+- **CodeBuild** — managed build service (compile, test, package).
+- **CodeDeploy** — automated deployment (EC2, ECS, Lambda; blue/green, rolling).
+- **CodePipeline** — CI/CD orchestration (source → build → deploy).
+- **CloudFormation** — Infrastructure as Code (templates/stacks).
+- **CDK** — define CloudFormation in programming languages.
+- **SAM** — Serverless Application Model (Lambda/API GW IaC).
+- **Systems Manager** — patch management, run commands, Session Manager, Parameter Store.
+- **CloudFormation StackSets** — deploy stacks across multiple accounts/regions.
+- **CloudFormation Drift Detection** — detect manual changes to stack resources.
+
+## Migration Services
+- **MGN (Application Migration Service)** — lift-and-shift server/VM migration (replaces SMS).
+- **DMS (Database Migration Service)** — migrate databases with CDC for minimal downtime.
+- **DataSync** — online data transfer on-prem ↔ AWS (NFS, SMB, S3, EFS, FSx).
+- **Transfer Family** — managed SFTP/FTPS/FTP into S3/EFS.
+- **Snowball / Snowball Edge** — physical device for TB-scale data transfer.
+- **Snowmobile** — exabyte-scale data transfer (shipping container).
+
+## FSx Family
+- **FSx for Windows** — managed Windows File Server (SMB); Active Directory integration.
+- **FSx for Lustre** — high-performance file system for ML/HPC; integrates with S3.
+- **FSx for NetApp ONTAP** — full ONTAP features (snapshots, replication, cloning).
+- **FSx for OpenZFS** — managed OpenZFS file system.
+
+## IoT & Edge
+- **IoT Core** — MQTT/HTTP device connectivity and management.
+- **IoT Greengrass** — run Lambda/compute on edge devices.
+- **IoT Analytics** — collect, process, analyze IoT data.
+- **FreeRTOS** — real-time OS for microcontrollers.
+
+## Additional Confusion Pairs
+- **MGN** (server migration) ≠ **DMS** (database migration).
+- **DataSync** (online transfer) ≠ **Snowball** (offline/physical transfer).
+- **CloudFormation** (IaC) ≠ **Elastic Beanstalk** (PaaS deployment).
+- **CodeDeploy** (deployment) ≠ **CodePipeline** (orchestration).
+- **FSx for Lustre** (HPC/ML) ≠ **EFS** (general NFS).
+- **FSx for Windows** (SMB) ≠ **EFS** (NFS/Linux only).
+- **IoT Core** (device connectivity) ≠ **Kinesis** (data streaming).
+- **Snowball** (TB) ≠ **Snowmobile** (EB).
+- **StackSets** (multi-account CFN) ≠ **Stack** (single account).
+- **Beanstalk** (PaaS) ≠ **ECS** (container orchestration).
+
+## SAA-C03 In-Scope Services (know existence)
+- **App Runner** — containerized web apps/APIs from source code or image.
+- **App Mesh** — service mesh for ECS/EKS/EC2.
+- **Lake Formation** — data lake governance and access control.
+- **OpenSearch Service** — search, log analytics (Elasticsearch fork).
+- **MWAA** — Managed Apache Airflow for workflow orchestration.
+- **Redshift Serverless** — serverless data warehouse.
+- **Aurora Serverless v2** — auto-scaling Aurora capacity.
+- **EFS One Zone** — EFS in single AZ (cheaper, less durable).
+- **S3 Object Lambda** — transform objects on GET request.
+- **S3 Access Points** — named network endpoints with dedicated policies.
+- **S3 Storage Lens** — organization-wide storage analytics.
+- **Compute Optimizer** — ML-based rightsizing recommendations.
+- **Firewall Manager** — centralized WAF/SG/Network Firewall management.
+- **RAM (Resource Access Manager)** — share resources across accounts.
+- **Service Catalog** — govern approved product catalog for self-service provisioning.
+
+## Numeric Facts to Remember
+- S3 durability: **11 nines** (99.999999999%).
+- S3 availability: Standard **99.99%**, IA **99.9%**.
+- RDS Multi-AZ failover: typically **60–120 seconds**.
+- Aurora storage: auto-scales in **10 GB** increments up to **128 TB**.
+- DynamoDB item size limit: **400 KB**.
+- DynamoDB partition throughput: **3000 RCU / 1000 WCU** per partition.
+- SQS visibility timeout: default **30 sec**, max **12 hours**.
+- SQS message retention: default **4 days**, max **14 days**.
+- Lambda timeout: max **15 minutes**.
+- Lambda payload: **6 MB** sync, **256 KB** async (SQS).
+- API Gateway timeout: max **29 seconds**.
+- CloudFront TTL: default **24 hours** (configurable).
+- EBS snapshot: incremental, stored in **S3** (managed).
+- ASG default cooldown: **300 seconds**.
+- Route 53 TTL minimum: **0 seconds** (for fast failover).
+- NAT Gateway bandwidth: up to **100 Gbps**.
+- Direct Connect: **1 Gbps or 10 Gbps** (up to 100 Gbps).
+- Spot interruption notice: **2 minutes**.
+- RI discount: up to **72%** (3-year all upfront).
+- Spot discount: up to **90%**.
