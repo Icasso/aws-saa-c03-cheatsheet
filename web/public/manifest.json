@@ -1,0 +1,10 @@
+{
+  "name": "SAA-C03 Study App",
+  "short_name": "SAA-C03",
+  "description": "Interactive AWS Solutions Architect Associate exam prep — study guides, flashcards, and practice exam.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary"
+}

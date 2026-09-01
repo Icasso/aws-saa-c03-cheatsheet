@@ -1,13 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
+import NavIcon from "./NavIcon";
 
 const navItems = [
-  { to: "/", label: "Home", end: true },
-  { to: "/study", label: "Guides" },
-  { to: "/flashcards", label: "Cards" },
-  { to: "/practice", label: "Exam" },
+  { to: "/", label: "Home", icon: "home" as const, end: true },
+  { to: "/study", label: "Guides", icon: "guides" as const },
+  { to: "/flashcards", label: "Cards", icon: "cards" as const },
+  { to: "/practice", label: "Exam", icon: "exam" as const },
 ];
 
-function NavLinks({ className }: { className?: string }) {
+function NavLinks({ mobile }: { mobile?: boolean }) {
   return (
     <>
       {navItems.map((item) => (
@@ -16,10 +17,13 @@ function NavLinks({ className }: { className?: string }) {
           to={item.to}
           end={item.end}
           className={({ isActive }) =>
-            isActive ? `nav-link active ${className ?? ""}`.trim() : `nav-link ${className ?? ""}`.trim()
+            isActive
+              ? `nav-link active${mobile ? " bottom-nav-link" : ""}`
+              : `nav-link${mobile ? " bottom-nav-link" : ""}`
           }
         >
-          {item.label}
+          {mobile && <NavIcon name={item.icon} />}
+          <span className="nav-label">{item.label}</span>
         </NavLink>
       ))}
     </>
@@ -42,7 +46,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <nav className="bottom-nav" aria-label="Mobile navigation">
-        <NavLinks className="bottom-nav-link" />
+        <NavLinks mobile />
       </nav>
     </div>
   );
