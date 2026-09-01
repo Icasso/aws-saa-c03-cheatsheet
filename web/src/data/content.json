@@ -32,6 +32,42 @@
     {
       "title": "Well-Architected Framework",
       "detail": "6 pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability."
+    },
+    {
+      "title": "Security groups",
+      "detail": "stateful, instance-level firewall. **NACLs** = stateless, subnet-level. **SG deny by default; NACL allow/deny rules.**"
+    },
+    {
+      "title": "Private subnet",
+      "detail": "no direct internet route. **NAT Gateway** (managed, per-AZ) lets private instances reach the internet outbound only."
+    },
+    {
+      "title": "S3",
+      "detail": "object storage, 11 nines durability. **EBS** = block storage for EC2. **EFS** = shared NFS for Linux. Pick storage by access pattern."
+    },
+    {
+      "title": "Multi-AZ",
+      "detail": "synchronous failover in one region (HA). **Read replicas / Cross-Region Replication** = async, DR/read scaling."
+    },
+    {
+      "title": "ALB",
+      "detail": "Layer 7 HTTP/HTTPS, path/host routing. **NLB** = Layer 4 TCP/UDP, ultra-low latency, static IP. **GWLB** = inline security appliances."
+    },
+    {
+      "title": "SQS Standard",
+      "detail": "at-least-once, best-effort ordering. **SQS FIFO** = exactly-once, strict ordering. **SNS** = pub/sub fan-out."
+    },
+    {
+      "title": "IAM roles for EC2/Lambda/cross-account",
+      "detail": "**never long-lived access keys on instances.** Least privilege always."
+    },
+    {
+      "title": "Reserved Instances / Savings Plans",
+      "detail": "steady-state compute discount. **Spot** = up to 90% off, interruptible. **On-Demand** = no commitment."
+    },
+    {
+      "title": "Route 53 routing",
+      "detail": "Simple, Weighted, Latency, Failover, Geolocation, Geoproximity, Multi-value (health checks)."
     }
   ],
   "studyGuides": [
@@ -111,6 +147,13 @@
       "title": "Architecture Patterns Reference — SAA-C03",
       "order": 11,
       "content": "# Architecture Patterns Reference — SAA-C03\n*Know these reference architectures cold. The exam describes variations of these patterns.*\n\n---\n\n## Pattern 1: Three-Tier Web Application\n```\n                    Internet\n                       │\n                  [Route 53]\n                       │\n              [ALB - public subnet]\n                  /         \\\n         [EC2/ASG]       [EC2/ASG]     ← private subnet, AZ-a / AZ-b\n              \\         /\n              [RDS Multi-AZ]              ← isolated subnet\n```\n| Component | Service | Why |\n|---|---|---|\n| DNS | Route 53 | Health checks, failover |\n| Load balancer | ALB | L7 routing, SSL termination (ACM) |\n| Compute | EC2 + ASG | Auto-scale across AZs |\n| Database | RDS Multi-AZ | Sync failover, HA |\n| Security | WAF on ALB, SGs, private subnets | Defense in depth |\n| **Variations:** Replace EC2 with ECS/Fargate. Add ElastiCache for sessions. Add CloudFront in front. |\n\n## Pattern 2: Serverless API\n```\nClient → [API Gateway] → [Lambda] → [DynamoDB]\n                ↓\n           [Cognito] (auth)\n```\n| Component | Service | Why |\n|---|---|---|\n| API | API Gateway | Throttling, auth, caching |\n| Compute | Lambda | Pay per request, auto-scale |\n| Database | DynamoDB on-demand | Serverless, single-digit ms |\n| Auth | Cognito User Pool | Managed user directory |\n| **Variations:** S3 instead of DynamoDB. Step Functions for workflows. SQS for async. |\n\n## Pattern 3: Event-Driven Processing\n```\n[S3 upload] → [S3 Event] → [SQS] → [Lambda] → [DynamoDB]\n                                ↓\n                           [DLQ] (failed messages)\n```\n| Component | Service | Why |\n|---|---|---|\n| Trigger | S3 event notification | React to uploads |\n| Buffer | SQS | Decouple, retry, DLQ |\n| Process | Lambda | Serverless, event-driven |\n| **Variations:** SNS fan-out to multiple SQS. EventBridge for complex routing. Kinesis for streaming. |\n\n## Pattern 4: Hybrid (On-Premises + AWS)\n```\nOn-Prem DC ──[DX primary]──► [VPC]\n         ╲                  /    \\\n          ──[VPN backup]───       [Workloads]\n```\n| Component | Service | Why |\n|---|---|---|\n| Primary link | Direct Connect | Dedicated, consistent latency |\n| Backup link | Site-to-Site VPN | Encrypted over internet |\n| Routing hub | Transit Gateway | Connect multiple VPCs + on-prem |\n| DNS | Route 53 Resolver | Hybrid DNS resolution |\n| **Variations:** VPN only (lower bandwidth). Storage Gateway for on-prem cache. Outposts for AWS on-prem. |\n\n## Pattern 5: Multi-Region Active-Passive DR\n```\nus-east-1 (ACTIVE)                    us-west-2 (STANDBY)\n[ALB + ASG + RDS Multi-AZ]           [ASG min=0 + RDS snapshot/replica]\n         │                                    │\n         └──── [Route 53 Failover] ───────────┘\n              (health check on primary)\n```\n| Component | Service | Why |\n|---|---|---|\n| Failover DNS | Route 53 failover | Auto-route on primary failure |\n| Data replication | S3 CRR, Aurora Global DB, DMS | Cross-region data sync |\n| Compute standby | ASG with min=0 in DR region | Scale up on failover |\n| **Variations:** Pilot light (DB always on). Warm standby (min=1). Active-active (both regions live). |\n\n## Pattern 6: Microservices on ECS\n```\n[ALB] → [ECS Service A] → [RDS A]\n      → [ECS Service B] → [DynamoDB]\n      → [ECS Service C] → [SQS] → [Lambda]\n         (Service Discovery via Cloud Map)\n```\n| Component | Service | Why |\n|---|---|---|\n| Load balancer | ALB | Path-based routing to services |\n| Containers | ECS on Fargate | No EC2 management |\n| Discovery | Cloud Map | Service-to-service DNS |\n| Async comms | SQS/EventBridge | Loose coupling |\n| **Variations:** EKS instead of ECS. API Gateway instead of ALB. App Mesh for observability. |\n\n## Pattern 7: Data Lake\n```\n[Sources] → [Kinesis/Glue/DMS] → [S3 Data Lake]\n                                       │\n                              [Glue Data Catalog]\n                                  /         \\\n                            [Athena]    [QuickSight]\n                           (SQL queries)  (dashboards)\n```\n| Component | Service | Why |\n|---|---|---|\n| Storage | S3 | Cheap, durable, unlimited |\n| Catalog | Glue Data Catalog | Schema discovery |\n| Query | Athena | Serverless SQL |\n| ETL | Glue jobs | Transform raw → curated |\n| BI | QuickSight | Dashboards and reports |\n| **Variations:** EMR for Spark. Redshift for warehouse. Lake Formation for governance. |\n\n## Pattern 8: Static Website\n```\nUser → [Route 53] → [CloudFront] → [S3 bucket]\n                         (ACM cert)\n```\n| Component | Service | Why |\n|---|---|---|\n| Hosting | S3 static website | Cheap, durable |\n| CDN | CloudFront | Global edge caching |\n| DNS | Route 53 alias to CloudFront | Apex domain support |\n| TLS | ACM certificate | Free HTTPS |\n| **Variations:** S3 + CloudFront OAI/OAC for private bucket. Lambda@Edge for dynamic content. |\n\n## Pattern 9: CI/CD Pipeline\n```\n[CodeCommit/GitHub] → [CodePipeline] → [CodeBuild] → [CodeDeploy]\n                                                          ↓\n                                                    [EC2/ECS/Lambda]\n                                                    (blue/green deploy)\n```\n| Component | Service | Why |\n|---|---|---|\n| Source | CodeCommit / GitHub / S3 | Version control |\n| Pipeline | CodePipeline | Orchestrate stages |\n| Build | CodeBuild | Compile, test, package |\n| Deploy | CodeDeploy | Blue/green, rolling, in-place |\n| **Variations:** Jenkins on EC2. GitHub Actions. CodeDeploy to ECS/Fargate. |\n\n## Pattern 10: IoT Data Pipeline\n```\n[IoT Devices] → [IoT Core] → [Kinesis Data Streams] → [Lambda] → [DynamoDB]\n                                    ↓\n                              [Kinesis Firehose] → [S3] → [Athena]\n```\n| Component | Service | Why |\n|---|---|---|\n| Ingestion | IoT Core | MQTT/HTTP device connectivity |\n| Streaming | Kinesis Data Streams | Real-time ordered processing |\n| Storage | Firehose → S3 | Durable archive |\n| Analytics | Athena | SQL on archived data |\n| **Variations:** IoT Analytics. Timestream for time-series. SageMaker for ML on IoT data. |\n\n---\n\n## Architecture Selection Guide (exam speed)\n\n| Business requirement | Start with this pattern |\n|---|---|\n| Public web app with database | Pattern 1 (3-tier) |\n| REST API, variable traffic | Pattern 2 (serverless) |\n| File upload triggers processing | Pattern 3 (event-driven) |\n| Connect datacenter to AWS | Pattern 4 (hybrid) |\n| Survive region failure | Pattern 5 (multi-region DR) |\n| Multiple independent services | Pattern 6 (microservices) |\n| Analytics on large datasets | Pattern 7 (data lake) |\n| Marketing/docs website | Pattern 8 (static) |\n| Automated deployments | Pattern 9 (CI/CD) |\n| Connected devices / sensors | Pattern 10 (IoT) |\n"
+    },
+    {
+      "id": "SECURITY",
+      "filename": "SECURITY.md",
+      "title": "Security",
+      "order": 99,
+      "content": "# Security\n\n## Scope\n\nThis repository is a **static study app** — markdown cheat sheets plus a client-side React UI. There is no backend, authentication, database, or user accounts.\n\n**Live app:** https://saa-c03-study-six.vercel.app\n\n## What we store\n\n| Data | Where | Notes |\n|------|-------|-------|\n| Study content | Built into static JSON at deploy time | Public by design |\n| Practice exam answers | Client bundle | Expected for a study tool — not secret exam content |\n| Flashcard progress, exam scores, flagged questions | Browser `localStorage` only | Never sent to a server; stays on your device |\n\n## Security measures\n\n- **No secrets in repo** — no API keys, tokens, or credentials\n- **Static hosting** — Vercel serves pre-built HTML/JS/CSS only\n- **Security headers** — CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` (see `vercel.json`)\n- **Markdown rendering** — `react-markdown` (no raw HTML); links restricted to `http`, `https`, `mailto`\n- **localStorage validation** — parsed progress data is schema-checked before use\n- **Dependencies** — run `npm audit` in `web/` before releases\n\n## Reporting issues\n\nIf you find a security problem, please open a [GitHub issue](https://github.com/Icasso/aws-saa-c03-cheatsheet/issues) with steps to reproduce. Do not include real AWS credentials or personal data.\n\n## Not in scope\n\n- Exam answer secrecy (practice content is intentionally included)\n- Multi-user data isolation (single-user, browser-local app)\n- HIPAA/PCI compliance (no regulated data handled)\n"
     }
   ],
   "flashcards": [
@@ -759,7 +802,7 @@
     {
       "id": 1,
       "domain": "D1",
-      "question": "bucket without storing long-term AWS credentials on the servers. Which approach meets the requirement with least operational overhead?",
+      "question": "A company runs a web application on EC2 instances that must read objects from an S3 bucket without storing long-term AWS credentials on the servers. Which approach meets the requirement with least operational overhead?",
       "options": [
         {
           "letter": "A",
@@ -787,7 +830,7 @@
     {
       "id": 2,
       "domain": "D1",
-      "question": "The architecture must be highly available and managed by AWS. What should be deployed?",
+      "question": "An application in private subnets must download security patches from the internet. The architecture must be highly available and managed by AWS. What should be deployed?",
       "options": [
         {
           "letter": "A",
@@ -815,7 +858,7 @@
     {
       "id": 3,
       "domain": "D1",
-      "question": "return traffic for established connections and support referencing other instances by security group ID. Which control should they use?",
+      "question": "A security team wants stateful, instance-level firewall rules that automatically allow return traffic for established connections and support referencing other instances by security group ID. Which control should they use?",
       "options": [
         {
           "letter": "A",
@@ -843,7 +886,7 @@
     {
       "id": 4,
       "domain": "D1",
-      "question": "the company fully controls and can audit usage of. Which approach is MOST appropriate?",
+      "question": "A healthcare company must encrypt all patient records at rest in S3 using keys that the company fully controls and can audit usage of. Which approach is MOST appropriate?",
       "options": [
         {
           "letter": "A",
@@ -871,7 +914,7 @@
     {
       "id": 5,
       "domain": "D1",
-      "question": "them programmatically with audit logging. Which AWS service should they use?",
+      "question": "A microservices team needs to rotate database credentials automatically and retrieve them programmatically with audit logging. Which AWS service should they use?",
       "options": [
         {
           "letter": "A",
@@ -899,7 +942,7 @@
     {
       "id": 6,
       "domain": "D1",
-      "question": "public internet or a NAT gateway. Which combination achieves this MOST cost-effectively?",
+      "question": "A VPC-hosted application must access S3 and DynamoDB without traffic traversing the public internet or a NAT gateway. Which combination achieves this MOST cost-effectively?",
       "options": [
         {
           "letter": "A",
@@ -927,7 +970,7 @@
     {
       "id": 7,
       "domain": "D1",
-      "question": "before traffic reaches the application load balancer. Which service should be deployed?",
+      "question": "A public-facing API must block SQL injection and rate-limit abusive clients at the edge before traffic reaches the application load balancer. Which service should be deployed?",
       "options": [
         {
           "letter": "A",
@@ -955,7 +998,7 @@
     {
       "id": 8,
       "domain": "D1",
-      "question": "",
+      "question": "Which of the following are IAM best practices for production AWS accounts?",
       "options": [
         {
           "letter": "A",
@@ -979,13 +1022,13 @@
         "B",
         "C"
       ],
-      "multiSelect": false,
+      "multiSelect": true,
       "explanation": "MFA, roles over keys, and least privilege are core IAM best practices. Never share root keys — root should have MFA and almost no daily use."
     },
     {
       "id": 9,
       "domain": "D1",
-      "question": "specific resources, without creating IAM users in Account B for each developer. What should be configured?",
+      "question": "Account B must allow developers in Account A to assume a role in Account B to manage specific resources, without creating IAM users in Account B for each developer. What should be configured?",
       "options": [
         {
           "letter": "A",
@@ -1013,7 +1056,7 @@
     {
       "id": 10,
       "domain": "D1",
-      "question": "using a custom domain name. Which AWS service provides and manages the TLS certificate?",
+      "question": "A company must encrypt data in transit between users and its Application Load Balancer using a custom domain name. Which AWS service provides and manages the TLS certificate?",
       "options": [
         {
           "letter": "A",
@@ -1041,7 +1084,7 @@
     {
       "id": 11,
       "domain": "D1",
-      "question": "CloudTrail or creating public S3 buckets, regardless of local administrator actions. What should they implement?",
+      "question": "An organization uses AWS Organizations and wants to prevent member accounts from disabling CloudTrail or creating public S3 buckets, regardless of local administrator actions. What should they implement?",
       "options": [
         {
           "letter": "A",
@@ -1069,7 +1112,7 @@
     {
       "id": 12,
       "domain": "D1",
-      "question": "Application servers should NOT be reachable from the internet. Which subnet placement is correct?",
+      "question": "Database instances in private subnets must connect to Amazon RDS in the same VPC. Application servers should NOT be reachable from the internet. Which subnet placement is correct?",
       "options": [
         {
           "letter": "A",
@@ -1097,7 +1140,7 @@
     {
       "id": 13,
       "domain": "D2",
-      "question": "with automatic failover and minimal manual intervention. Which configuration meets the requirement?",
+      "question": "A production MySQL database on RDS must survive the loss of an entire Availability Zone with automatic failover and minimal manual intervention. Which configuration meets the requirement?",
       "options": [
         {
           "letter": "A",
@@ -1125,7 +1168,7 @@
     {
       "id": 14,
       "domain": "D2",
-      "question": "asynchronously and occasional duplicate processing is acceptable. Which queue type should be used?",
+      "question": "An order-processing system receives bursts of orders. Workers can process orders asynchronously and occasional duplicate processing is acceptable. Which queue type should be used?",
       "options": [
         {
           "letter": "A",
@@ -1153,7 +1196,7 @@
     {
       "id": 15,
       "domain": "D2",
-      "question": "generate thumbnails, scan for malware, and update metadata. Which pattern is MOST appropriate?",
+      "question": "When a new image is uploaded to S3, multiple Lambda functions must run in parallel to generate thumbnails, scan for malware, and update metadata. Which pattern is MOST appropriate?",
       "options": [
         {
           "letter": "A",
@@ -1181,7 +1224,7 @@
     {
       "id": 16,
       "domain": "D2",
-      "question": "traffic must automatically fail over to the secondary Region's static IP endpoints. Which Route 53 routing policy should be used?",
+      "question": "A company runs an active-passive DR site. When the primary Region fails health checks, traffic must automatically fail over to the secondary Region's static IP endpoints. Which Route 53 routing policy should be used?",
       "options": [
         {
           "letter": "A",
@@ -1209,7 +1252,7 @@
     {
       "id": 17,
       "domain": "D2",
-      "question": "connections per second with static IP addresses and preservation of the client source IP. Which load balancer type should be used?",
+      "question": "A financial application requires ultra-low latency TCP traffic handling millions of connections per second with static IP addresses and preservation of the client source IP. Which load balancer type should be used?",
       "options": [
         {
           "letter": "A",
@@ -1237,7 +1280,7 @@
     {
       "id": 18,
       "domain": "D2",
-      "question": "behind a load balancer. Which service automatically adds and removes EC2 instances based on demand?",
+      "question": "Web traffic spikes unpredictably during product launches. The web tier is stateless behind a load balancer. Which service automatically adds and removes EC2 instances based on demand?",
       "options": [
         {
           "letter": "A",
@@ -1265,7 +1308,7 @@
     {
       "id": 19,
       "domain": "D2",
-      "question": "with a warm copy of the application stack running at reduced capacity in a secondary Region. Which DR strategy fits?",
+      "question": "A company needs an RPO of minutes and RTO of tens of minutes for a critical database, with a warm copy of the application stack running at reduced capacity in a secondary Region. Which DR strategy fits?",
       "options": [
         {
           "letter": "A",
@@ -1293,7 +1336,7 @@
     {
       "id": 20,
       "domain": "D2",
-      "question": "",
+      "question": "Which of the following design choices improve resilience through loose coupling?",
       "options": [
         {
           "letter": "A",
@@ -1317,13 +1360,13 @@
         "B",
         "C"
       ],
-      "multiSelect": false,
+      "multiSelect": true,
       "explanation": "Queues, event buses, and external session stores decouple components. Tight sync HTTP chains with no timeouts create cascading failures."
     },
     {
       "id": 21,
       "domain": "D2",
-      "question": "while keeping the source database online for continuous replication. Which AWS service should they use?",
+      "question": "A company is migrating an on-premises Oracle database to Amazon RDS with minimal downtime while keeping the source database online for continuous replication. Which AWS service should they use?",
       "options": [
         {
           "letter": "A",
@@ -1351,7 +1394,7 @@
     {
       "id": 22,
       "domain": "D2",
-      "question": "are not logged out when an instance is replaced. Where should session state be stored?",
+      "question": "A web application session data must survive individual EC2 instance failures so users are not logged out when an instance is replaced. Where should session state be stored?",
       "options": [
         {
           "letter": "A",
@@ -1379,7 +1422,7 @@
     {
       "id": 23,
       "domain": "D3",
-      "question": "and reduced origin load. Which service should sit in front of S3?",
+      "question": "A global media company serves static assets from S3 to users worldwide with low latency and reduced origin load. Which service should sit in front of S3?",
       "options": [
         {
           "letter": "A",
@@ -1407,7 +1450,7 @@
     {
       "id": 24,
       "domain": "D3",
-      "question": "but cost less than S3 Standard. Which storage class is MOST appropriate?",
+      "question": "Infrequently accessed backup files must remain retrievable within minutes when needed, but cost less than S3 Standard. Which storage class is MOST appropriate?",
       "options": [
         {
           "letter": "A",
@@ -1435,7 +1478,7 @@
     {
       "id": 25,
       "domain": "D3",
-      "question": "latency at any scale, with flexible schema and built-in global tables for multi-Region writes. Which service should be chosen over Amazon RDS?",
+      "question": "An application needs a fully managed NoSQL database with single-digit millisecond latency at any scale, with flexible schema and built-in global tables for multi-Region writes. Which service should be chosen over Amazon RDS?",
       "options": [
         {
           "letter": "A",
@@ -1463,7 +1506,7 @@
     {
       "id": 26,
       "domain": "D3",
-      "question": "single EC2 instance running a transactional database. Which EBS volume type should be used?",
+      "question": "A database workload requires the highest IOPS and lowest latency block storage for a single EC2 instance running a transactional database. Which EBS volume type should be used?",
       "options": [
         {
           "letter": "A",
@@ -1491,7 +1534,7 @@
     {
       "id": 27,
       "domain": "D3",
-      "question": "in multiple Regions using static anycast IPs. Which service should be used?",
+      "question": "A real-time gaming platform needs to improve global TCP/UDP performance to fixed endpoints in multiple Regions using static anycast IPs. Which service should be used?",
       "options": [
         {
           "letter": "A",
@@ -1519,7 +1562,7 @@
     {
       "id": 28,
       "domain": "D3",
-      "question": "MySQL instance without affecting write performance on the primary. What should be added?",
+      "question": "A read-heavy reporting workload must offload SELECT queries from the primary Amazon RDS MySQL instance without affecting write performance on the primary. What should be added?",
       "options": [
         {
           "letter": "A",
@@ -1547,7 +1590,7 @@
     {
       "id": 29,
       "domain": "D3",
-      "question": "web application?",
+      "question": "Which of the following actions improve performance for a globally distributed read-heavy web application?",
       "options": [
         {
           "letter": "A",
@@ -1571,13 +1614,13 @@
         "B",
         "C"
       ],
-      "multiSelect": false,
+      "multiSelect": true,
       "explanation": "Edge caching, DAX, and regional read replicas all improve read performance globally. Disabling Multi-AZ hurts availability, not a performance win for reads."
     },
     {
       "id": 30,
       "domain": "D3",
-      "question": "to reduce Lambda invocations and latency for cacheable responses. Which feature should they enable?",
+      "question": "An REST API backed by Lambda experiences repeated identical GET requests. The team wants to reduce Lambda invocations and latency for cacheable responses. Which feature should they enable?",
       "options": [
         {
           "letter": "A",
@@ -1605,7 +1648,7 @@
     {
       "id": 31,
       "domain": "D3",
-      "question": "shared POSIX file system concurrently with automatic scaling of throughput. Which storage service should be used?",
+      "question": "A Linux file-sharing workload requires many EC2 instances across AZs to mount the same shared POSIX file system concurrently with automatic scaling of throughput. Which storage service should be used?",
       "options": [
         {
           "letter": "A",
@@ -1633,7 +1676,7 @@
     {
       "id": 32,
       "domain": "D3",
-      "question": "within a single Availability Zone. Which EC2 placement strategy should be used?",
+      "question": "A tightly coupled HPC cluster needs the lowest network latency between EC2 instances within a single Availability Zone. Which EC2 placement strategy should be used?",
       "options": [
         {
           "letter": "A",
@@ -1661,7 +1704,7 @@
     {
       "id": 33,
       "domain": "D4",
-      "question": "families and Regions. Which purchasing option provides the LARGEST discount for compute?",
+      "question": "A steady-state production fleet runs 24/7 for three years with predictable instance families and Regions. Which purchasing option provides the LARGEST discount for compute?",
       "options": [
         {
           "letter": "A",
@@ -1689,7 +1732,7 @@
     {
       "id": 34,
       "domain": "D4",
-      "question": "parallel workers that run for a few hours nightly. Which EC2 pricing model is BEST?",
+      "question": "A batch analytics job can tolerate interruption and must minimize cost for thousands of parallel workers that run for a few hours nightly. Which EC2 pricing model is BEST?",
       "options": [
         {
           "letter": "A",
@@ -1717,7 +1760,7 @@
     {
       "id": 35,
       "domain": "D4",
-      "question": "then should be deleted. Which feature automates the cost-optimal transitions?",
+      "question": "Log files in S3 Standard are accessed frequently for 30 days, then rarely for 90 days, then should be deleted. Which feature automates the cost-optimal transitions?",
       "options": [
         {
           "letter": "A",
@@ -1745,7 +1788,7 @@
     {
       "id": 36,
       "domain": "D4",
-      "question": "workload is not latency-sensitive. What is the MOST cost-effective first action?",
+      "question": "CloudWatch metrics show an m5.4xlarge EC2 instance averaging 5% CPU for weeks. The workload is not latency-sensitive. What is the MOST cost-effective first action?",
       "options": [
         {
           "letter": "A",
@@ -1773,7 +1816,7 @@
     {
       "id": 37,
       "domain": "D4",
-      "question": "",
+      "question": "Which of the following are effective cost-optimization strategies on AWS?",
       "options": [
         {
           "letter": "A",
@@ -1797,13 +1840,13 @@
         "B",
         "C"
       ],
-      "multiSelect": false,
+      "multiSelect": true,
       "explanation": "Cost Explorer/tagging, cleaning idle resources, and Intelligent-Tiering are valid optimizations. Oversizing everything by default increases cost."
     },
     {
       "id": 38,
       "domain": "D4",
-      "question": "others go cold immediately. The team wants automatic tier movement without managing lifecycle rules per prefix. Which S3 storage class should they use?",
+      "question": "A data lake object access pattern is unpredictable: some objects are hot for weeks, others go cold immediately. The team wants automatic tier movement without managing lifecycle rules per prefix. Which S3 storage class should they use?",
       "options": [
         {
           "letter": "A",
@@ -1831,7 +1874,7 @@
     {
       "id": 39,
       "domain": "D4",
-      "question": "and historical views of spend by service and tag. Which combination should they use?",
+      "question": "A finance team needs email alerts when monthly AWS spend exceeds a defined threshold, and historical views of spend by service and tag. Which combination should they use?",
       "options": [
         {
           "letter": "A",
@@ -1859,7 +1902,7 @@
     {
       "id": 40,
       "domain": "D4",
-      "question": "Traffic costs are high. Which architecture change reduces data transfer cost while improving user experience? ---",
+      "question": "A company serves large video files from S3 to users in the same Region as the bucket. Traffic costs are high. Which architecture change reduces data transfer cost while improving user experience?",
       "options": [
         {
           "letter": "A",
@@ -1887,7 +1930,7 @@
     {
       "id": 41,
       "domain": "D1",
-      "question": "accounts without configuring each account individually. Which service should they use?",
+      "question": "A company with 30 AWS accounts needs consistent WAF rules applied across all accounts without configuring each account individually. Which service should they use?",
       "options": [
         {
           "letter": "A",
@@ -1915,7 +1958,7 @@
     {
       "id": 42,
       "domain": "D2",
-      "question": "hub. Which service simplifies this network topology?",
+      "question": "A company needs to connect 15 VPCs and an on-premises datacenter through a single hub. Which service simplifies this network topology?",
       "options": [
         {
           "letter": "A",
@@ -1943,7 +1986,7 @@
     {
       "id": 43,
       "domain": "D2",
-      "question": "If payment fails after 3 retries, notify admin and stop. Which service orchestrates this?",
+      "question": "A workflow must process an order: validate inventory → charge payment → ship. If payment fails after 3 retries, notify admin and stop. Which service orchestrates this?",
       "options": [
         {
           "letter": "A",
@@ -1971,7 +2014,7 @@
     {
       "id": 44,
       "domain": "D3",
-      "question": "network latency between instances in the same AZ. Which placement group should they use?",
+      "question": "A genomics company runs tightly coupled MPI jobs requiring the lowest possible network latency between instances in the same AZ. Which placement group should they use?",
       "options": [
         {
           "letter": "A",
@@ -1999,7 +2042,7 @@
     {
       "id": 45,
       "domain": "D3",
-      "question": "across AZs with Active Directory integration. Which service should they use?",
+      "question": "A company needs a shared Windows file system accessible from multiple EC2 instances across AZs with Active Directory integration. Which service should they use?",
       "options": [
         {
           "letter": "A",
@@ -2027,7 +2070,7 @@
     {
       "id": 46,
       "domain": "D4",
-      "question": "manual thresholds. Which service should they use?",
+      "question": "A company wants to detect unusual spending patterns automatically without setting manual thresholds. Which service should they use?",
       "options": [
         {
           "letter": "A",
@@ -2055,7 +2098,7 @@
     {
       "id": 47,
       "domain": "D1",
-      "question": "exposing it to the public internet. Which networking feature should they use?",
+      "question": "A SaaS provider needs to offer their API to customers in other VPCs without exposing it to the public internet. Which networking feature should they use?",
       "options": [
         {
           "letter": "A",
@@ -2083,7 +2126,7 @@
     {
       "id": 48,
       "domain": "D2",
-      "question": "downtime and ongoing replication until cutover. Which service should they use?",
+      "question": "A company must migrate 200 on-premises virtual machines to AWS with minimal downtime and ongoing replication until cutover. Which service should they use?",
       "options": [
         {
           "letter": "A",
@@ -2111,7 +2154,7 @@
     {
       "id": 49,
       "domain": "D3",
-      "question": "clickstream data with custom processing logic. Which service should they use?",
+      "question": "A real-time analytics dashboard needs to process 50,000 events per second from clickstream data with custom processing logic. Which service should they use?",
       "options": [
         {
           "letter": "A",
@@ -2139,7 +2182,7 @@
     {
       "id": 50,
       "domain": "D1",
-      "question": "and are automatically rotated every 30 days with zero application downtime. Which service?",
+      "question": "A company must ensure database credentials are never stored in application code and are automatically rotated every 30 days with zero application downtime. Which service?",
       "options": [
         {
           "letter": "A",
@@ -2167,7 +2210,7 @@
     {
       "id": 51,
       "domain": "D2",
-      "question": "eu-west-1 and American users to us-east-1 based on geographic location. Which Route 53 policy?",
+      "question": "A global application in us-east-1 and eu-west-1 must route European users to eu-west-1 and American users to us-east-1 based on geographic location. Which Route 53 policy?",
       "options": [
         {
           "letter": "A",
@@ -2195,7 +2238,7 @@
     {
       "id": 52,
       "domain": "D3",
-      "question": "latency-sensitive API that receives steady traffic 24/7. How should they eliminate cold starts?",
+      "question": "A Lambda function experiences cold starts causing 2-second delays for a latency-sensitive API that receives steady traffic 24/7. How should they eliminate cold starts?",
       "options": [
         {
           "letter": "A",
@@ -2223,7 +2266,7 @@
     {
       "id": 53,
       "domain": "D4",
-      "question": "compliance audits. Which storage optimization saves the most money?",
+      "question": "A company has 5 TB of log data in S3 Standard accessed once every 90 days for compliance audits. Which storage optimization saves the most money?",
       "options": [
         {
           "letter": "A",
@@ -2251,7 +2294,7 @@
     {
       "id": 54,
       "domain": "D1",
-      "question": "creating resources in regions other than us-east-1 and eu-west-1. Which control should they use?",
+      "question": "A security team needs to prevent any IAM user or role in the organization from creating resources in regions other than us-east-1 and eu-west-1. Which control should they use?",
       "options": [
         {
           "letter": "A",
@@ -2279,7 +2322,7 @@
     {
       "id": 55,
       "domain": "D2",
-      "question": "a minimum of 2 On-Demand instances at all times. Which ASG feature enables this?",
+      "question": "An Auto Scaling group needs to launch Spot Instances for cost savings but maintain a minimum of 2 On-Demand instances at all times. Which ASG feature enables this?",
       "options": [
         {
           "letter": "A",
@@ -2307,7 +2350,7 @@
     {
       "id": 56,
       "domain": "D3",
-      "question": "without provisioning a database cluster. Which service should they use?",
+      "question": "A data team needs to run ad-hoc SQL queries on 10 TB of Parquet files in S3 without provisioning a database cluster. Which service should they use?",
       "options": [
         {
           "letter": "A",
@@ -2335,7 +2378,7 @@
     {
       "id": 57,
       "domain": "D1",
-      "question": "directly to S3 using temporary AWS credentials. Which combination of services?",
+      "question": "A mobile application needs users to sign in with Google and then upload photos directly to S3 using temporary AWS credentials. Which combination of services?",
       "options": [
         {
           "letter": "A",
@@ -2363,7 +2406,7 @@
     {
       "id": 58,
       "domain": "D2",
-      "question": "with RPO under 1 second and automated failover. The database is Aurora PostgreSQL. Which feature?",
+      "question": "A company's primary database is in us-east-1. They need a DR copy in ap-southeast-1 with RPO under 1 second and automated failover. The database is Aurora PostgreSQL. Which feature?",
       "options": [
         {
           "letter": "A",
@@ -2391,7 +2434,7 @@
     {
       "id": 59,
       "domain": "D3",
-      "question": "users lose their sessions. How should they fix this?",
+      "question": "A web application stores session data. After Auto Scaling replaces instances, users lose their sessions. How should they fix this?",
       "options": [
         {
           "letter": "A",
@@ -2419,7 +2462,7 @@
     {
       "id": 60,
       "domain": "D4",
-      "question": "CPU utilization of 8%. What is the MOST cost-effective first step?",
+      "question": "A development team runs 10 m5.2xlarge instances 24/7 but monitoring shows average CPU utilization of 8%. What is the MOST cost-effective first step?",
       "options": [
         {
           "letter": "A",
@@ -2447,7 +2490,7 @@
     {
       "id": 61,
       "domain": "D1",
-      "question": "centrally and cannot be disabled by individual account administrators. Which architecture?",
+      "question": "A company needs to prove that all API activity across 20 accounts is logged centrally and cannot be disabled by individual account administrators. Which architecture?",
       "options": [
         {
           "letter": "A",
@@ -2475,7 +2518,7 @@
     {
       "id": 62,
       "domain": "D2",
-      "question": "experiencing throttling on a single prefix. What should they do?",
+      "question": "An S3 bucket receives millions of PUT requests per second. The company is experiencing throttling on a single prefix. What should they do?",
       "options": [
         {
           "letter": "A",
@@ -2503,7 +2546,7 @@
     {
       "id": 63,
       "domain": "D3",
-      "question": "They want managed infrastructure with minimal operational overhead. Which service?",
+      "question": "A company needs to run Apache Spark jobs on large datasets in S3 weekly. They want managed infrastructure with minimal operational overhead. Which service?",
       "options": [
         {
           "letter": "A",
@@ -2531,7 +2574,7 @@
     {
       "id": 64,
       "domain": "D1",
-      "question": "cannot be deleted or overwritten for 5 years, even by root users. Which S3 feature?",
+      "question": "Financial regulators require that S3 objects containing transaction records cannot be deleted or overwritten for 5 years, even by root users. Which S3 feature?",
       "options": [
         {
           "letter": "A",
@@ -2559,7 +2602,7 @@
     {
       "id": 65,
       "domain": "D2",
-      "question": "They need to detect when someone manually changes a resource outside of CloudFormation. Which service should they use? ---",
+      "question": "A company deploys infrastructure across 5 accounts using CloudFormation. They need to detect when someone manually changes a resource outside of CloudFormation. Which service should they use?",
       "options": [
         {
           "letter": "A",

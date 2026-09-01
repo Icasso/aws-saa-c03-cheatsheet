@@ -674,6 +674,8 @@ body {
   background: var(--border);
   cursor: pointer;
   transition: all 0.15s;
+  padding: 0;
+  border: none;
 }
 
 .dot.active {

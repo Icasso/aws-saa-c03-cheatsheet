@@ -49,12 +49,16 @@ export default function PracticeExamPage() {
   useEffect(() => {
     if (mode !== "exam" || !timerOn) return;
     if (secondsLeft <= 0) {
+      const correct = questions.filter((question) =>
+        scoreQuestion(question, answers[question.id] ?? [])
+      ).length;
+      recordExamAttempt(correct, questions.length);
       setMode("review");
       return;
     }
     const id = setInterval(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearInterval(id);
-  }, [mode, timerOn, secondsLeft]);
+  }, [mode, timerOn, secondsLeft, questions, answers]);
 
   function startExam() {
     setAnswers({});
