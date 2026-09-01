@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import content from "../data/content.json";
 import type { AppContent } from "../types";
 import { getProgress, toggleKnownCard } from "../hooks/useProgress";
+import { useSwipe } from "../hooks/useSwipe";
 
 const data = content as AppContent;
 
@@ -65,6 +66,11 @@ export default function FlashcardsPage() {
 
   const isKnown = known.has(card.term);
 
+  const swipe = useSwipe({
+    onSwipeLeft: next,
+    onSwipeRight: prev,
+  });
+
   return (
     <div className="page flashcards-page">
       <header className="flash-header">
@@ -97,13 +103,15 @@ export default function FlashcardsPage() {
       <button
         className={`flashcard ${flipped ? "flipped" : ""}`}
         onClick={() => setFlipped((f) => !f)}
+        onTouchStart={swipe.onTouchStart}
+        onTouchEnd={swipe.onTouchEnd}
         aria-label="Flip flashcard"
       >
         <div className="flashcard-inner">
           <div className="flashcard-face front">
             <p className="flash-label">Term</p>
             <h2>{card.term}</h2>
-            <p className="flash-hint">Click to reveal definition</p>
+            <p className="flash-hint">Tap to flip · swipe to navigate</p>
           </div>
           <div className="flashcard-face back">
             <p className="flash-label">Definition</p>
@@ -112,7 +120,7 @@ export default function FlashcardsPage() {
         </div>
       </button>
 
-      <div className="flash-actions">
+      <div className="flash-actions flash-actions-bar">
         <button className="btn btn-secondary" onClick={prev}>Previous</button>
         <button className="btn btn-secondary" onClick={() => setFlipped((f) => !f)}>
           {flipped ? "Show term" : "Show answer"}
