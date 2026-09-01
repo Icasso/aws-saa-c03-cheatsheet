@@ -8,7 +8,7 @@ const ROOT = join(__dirname, "..");
 const OUT = join(ROOT, "web", "src", "data");
 
 function stripBold(text) {
-  return text.replace(/\*\*([^*]+)\*\*/g, "$1").trim();
+  return text.replace(/\*\*/g, "").trim();
 }
 
 function parseFlashcards(content) {
@@ -27,6 +27,19 @@ function parseFlashcards(content) {
     }
   }
   return cards;
+}
+
+function isMetadataLine(line) {
+  const trimmed = line.trim();
+  return (
+    /^\[Select all that apply\.\]/i.test(trimmed) ||
+    trimmed === "[M]" ||
+    trimmed === "---"
+  );
+}
+
+function stripDomainPrefix(line) {
+  return line.replace(/^\s*\[[^\]]+\]\s*/, "").trim();
 }
 
 function parsePracticeExam(content) {
@@ -58,18 +71,25 @@ function parsePracticeExam(content) {
 
     const domainMatch = body.match(/^\s*\[([^\]]+)\]/);
     const domain = domainMatch ? domainMatch[1] : "General";
-    const multiSelect = /\[M\]/.test(body.split("\n")[0] ?? "");
+    const correct = answers.get(id) ?? [];
+    const multiSelect = /\[M\]/.test(body) || correct.length > 1;
 
-    const lines = body.split("\n");
     const questionLines = [];
     const options = [];
 
-    for (const line of lines) {
-      const opt = line.match(/^- ([A-Z])\.\s+(.+)$/);
+    for (const line of body.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || isMetadataLine(trimmed)) continue;
+
+      const opt = trimmed.match(/^- ([A-Z])\.\s+(.+)$/);
       if (opt) {
         options.push({ letter: opt[1], text: stripBold(opt[2]) });
-      } else if (!line.match(/^\s*\[/) && line.trim() && !line.startsWith("- ")) {
-        questionLines.push(line.trim());
+        continue;
+      }
+
+      const questionPart = stripDomainPrefix(trimmed);
+      if (questionPart) {
+        questionLines.push(questionPart);
       }
     }
 
@@ -78,6 +98,7 @@ function parsePracticeExam(content) {
         .join(" ")
         .replace(/\[Select all that apply\.\]\s*\[M\]/gi, "")
         .replace(/\[M\]/g, "")
+        .replace(/\s*---+\s*$/g, "")
         .trim()
     );
 
@@ -86,7 +107,7 @@ function parsePracticeExam(content) {
       domain,
       question: questionText,
       options,
-      correct: answers.get(id) ?? [],
+      correct,
       multiSelect,
       explanation: explanations.get(id) ?? "",
     });
@@ -132,10 +153,61 @@ function parseTopTen(readme) {
   const section = readme.split('## The "if you only remember 10 things" list')[1]?.split("##")[0] ?? "";
   const items = [];
   for (const line of section.split("\n")) {
-    const m = line.match(/^\d+\.\s+\*\*(.+?)\*\*\s*—\s*(.+)$/);
-    if (m) items.push({ title: m[1], detail: m[2] });
+    const numbered = line.match(/^\d+\.\s+(.+)$/);
+    if (!numbered) continue;
+    const rest = numbered[1];
+
+    let m = rest.match(/^\*\*(.+?)\*\*\s*(?:—|=|:)\s*(.+)$/);
+    if (m) {
+      items.push({ title: m[1], detail: m[2] });
+      continue;
+    }
+
+    m = rest.match(/^\*\*(.+?):\*\*\s*(.+)$/);
+    if (m) {
+      items.push({ title: m[1], detail: m[2] });
+      continue;
+    }
+
+    m = rest.match(/^\*\*(.+?)\*\*(.*?)\s*—\s*(.+)$/);
+    if (m) {
+      items.push({ title: (m[1] + m[2]).trim(), detail: m[3] });
+      continue;
+    }
   }
   return items;
+}
+
+function validateContent(data) {
+  const errors = [];
+
+  if (data.questions.length !== 65) {
+    errors.push(`Expected 65 questions, got ${data.questions.length}`);
+  }
+  if (data.flashcards.length < 100) {
+    errors.push(`Expected at least 100 flashcards, got ${data.flashcards.length}`);
+  }
+  if (data.topTen.length !== 10) {
+    errors.push(`Expected 10 top-ten items, got ${data.topTen.length}`);
+  }
+
+  for (const q of data.questions) {
+    if (!q.question) {
+      errors.push(`Q${q.id} has empty question text`);
+    }
+    if (q.correct.length > 1 && !q.multiSelect) {
+      errors.push(`Q${q.id} has multiple correct answers but multiSelect is false`);
+    }
+    if (q.options.length === 0) {
+      errors.push(`Q${q.id} has no options`);
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error("Content validation failed:");
+    for (const err of errors) console.error(`  - ${err}`);
+    process.exit(1);
+  }
 }
 
 const readme = readFileSync(join(ROOT, "00-README-start-here.md"), "utf8");
@@ -156,6 +228,8 @@ const data = {
   flashcards: parseFlashcards(flashcardsRaw),
   questions: parsePracticeExam(examRaw),
 };
+
+validateContent(data);
 
 writeFileSync(join(OUT, "content.json"), JSON.stringify(data, null, 2));
 console.log(`Parsed ${data.studyGuides.length} guides, ${data.flashcards.length} flashcards, ${data.questions.length} questions`);

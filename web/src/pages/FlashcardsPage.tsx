@@ -125,10 +125,12 @@ export default function FlashcardsPage() {
 
       <div className="progress-dots">
         {deck.slice(0, Math.min(deck.length, 20)).map((_, i) => (
-          <span
+          <button
             key={i}
+            type="button"
             className={`dot ${i === index ? "active" : ""} ${known.has(deck[i].term) ? "known" : ""}`}
             onClick={() => { setIndex(i); setFlipped(false); }}
+            aria-label={`Go to card ${i + 1}`}
           />
         ))}
         {deck.length > 20 && <span className="dot-more">+{deck.length - 20}</span>}
